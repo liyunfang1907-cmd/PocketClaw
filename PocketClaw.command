@@ -24,21 +24,34 @@ RESET='\033[0m'
 
 # (secure_wipe 已在 _common.sh 中定义)
 
-# ── 检查状态 ──
+# ── 检查状态（docker 命令加 5 秒超时，防止 Docker 启动中挂死）──
 show_status() {
     if ! command -v docker &>/dev/null; then
         echo -e "  ${YELLOW}[状态] Docker 未安装${RESET}"
         return
     fi
-    if ! docker info &>/dev/null; then
-        echo -e "  ${YELLOW}[状态] Docker 未运行${RESET}"
+    # 超时检测 Docker 是否就绪
+    local docker_ready=false
+    ( docker info >/dev/null 2>&1 ) &
+    local pid=$!
+    for _i in 1 2 3 4 5; do
+        if ! kill -0 "$pid" 2>/dev/null; then
+            wait "$pid" 2>/dev/null && docker_ready=true
+            break
+        fi
+        sleep 1
+    done
+    if ! $docker_ready; then
+        kill "$pid" 2>/dev/null
+        wait "$pid" 2>/dev/null
+        echo -e "  ${YELLOW}[状态] Docker 正在启动中…${RESET}"
         return
     fi
     local status
     status=$(docker ps --filter "name=pocketclaw" --format "{{.Status}}" 2>/dev/null)
     if [ -n "$status" ]; then
         echo -e "  ${GREEN}[状态] PocketClaw 运行中 - $status${RESET}"
-        echo -e "  ${CYAN}[地址] http://127.0.0.1:18789/pocketclaw${RESET}"
+        echo -e "  ${CYAN}[地址] http://127.0.0.1:18789/#token=pocketclaw${RESET}"
     else
         echo -e "  [状态] PocketClaw 未运行"
     fi
@@ -98,7 +111,7 @@ do_stop() {
 #  打开浏览器
 # ============================================================
 do_open() {
-    open "http://127.0.0.1:18789/pocketclaw" 2>/dev/null || xdg-open "http://127.0.0.1:18789/pocketclaw" 2>/dev/null || true
+    open "http://127.0.0.1:18789/#token=pocketclaw" 2>/dev/null || xdg-open "http://127.0.0.1:18789/#token=pocketclaw" 2>/dev/null || true
     sleep 1
 }
 

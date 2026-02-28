@@ -128,7 +128,102 @@ case "$PROVIDER" in
     ;;
 esac
 
-# ── 生成 openclaw.json ──
+# ── 构建频道配置 ──
+# 根据环境变量动态生成 channels JSON 片段
+CHANNELS=""
+ACTIVE_CHANNELS=""
+
+# --- Telegram ---
+if [[ -n "${TELEGRAM_BOT_TOKEN:-}" ]]; then
+  CHANNELS="${CHANNELS}\"telegram\":{\"botToken\":\"${TELEGRAM_BOT_TOKEN}\"},"
+  ACTIVE_CHANNELS="${ACTIVE_CHANNELS}  ✅ Telegram\n"
+fi
+
+# --- Discord ---
+if [[ -n "${DISCORD_BOT_TOKEN:-}" ]]; then
+  CHANNELS="${CHANNELS}\"discord\":{\"token\":\"${DISCORD_BOT_TOKEN}\"},"
+  ACTIVE_CHANNELS="${ACTIVE_CHANNELS}  ✅ Discord\n"
+fi
+
+# --- Slack ---
+if [[ -n "${SLACK_BOT_TOKEN:-}" && -n "${SLACK_APP_TOKEN:-}" ]]; then
+  CHANNELS="${CHANNELS}\"slack\":{\"botToken\":\"${SLACK_BOT_TOKEN}\",\"appToken\":\"${SLACK_APP_TOKEN}\"},"
+  ACTIVE_CHANNELS="${ACTIVE_CHANNELS}  ✅ Slack\n"
+elif [[ -n "${SLACK_BOT_TOKEN:-}" ]]; then
+  echo "[PocketClaw] ⚠ Slack 需要同时配置 SLACK_BOT_TOKEN 和 SLACK_APP_TOKEN"
+fi
+
+# --- WhatsApp ---
+if [[ -n "${WHATSAPP_ALLOW_FROM:-}" ]]; then
+  # WhatsApp 使用 Baileys，需要通过 openclaw channels login 链接设备
+  # allowFrom 用逗号分隔的电话号码列表
+  IFS=',' read -ra WA_NUMS <<< "$WHATSAPP_ALLOW_FROM"
+  WA_ALLOW="["
+  for num in "${WA_NUMS[@]}"; do
+    num=$(echo "$num" | xargs)
+    WA_ALLOW="${WA_ALLOW}\"${num}\","
+  done
+  WA_ALLOW="${WA_ALLOW%,}]"
+  CHANNELS="${CHANNELS}\"whatsapp\":{\"allowFrom\":${WA_ALLOW}},"
+  ACTIVE_CHANNELS="${ACTIVE_CHANNELS}  ✅ WhatsApp\n"
+fi
+
+# --- Signal ---
+if [[ -n "${SIGNAL_PHONE_NUMBER:-}" ]]; then
+  CHANNELS="${CHANNELS}\"signal\":{\"number\":\"${SIGNAL_PHONE_NUMBER}\"},"
+  ACTIVE_CHANNELS="${ACTIVE_CHANNELS}  ✅ Signal\n"
+fi
+
+# --- Google Chat ---
+if [[ -n "${GOOGLE_CHAT_CREDENTIALS:-}" ]]; then
+  GC_EXTRA=""
+  if [[ -n "${GOOGLE_CHAT_SPACES:-}" ]]; then
+    GC_EXTRA=",\"spaces\":\"${GOOGLE_CHAT_SPACES}\""
+  fi
+  CHANNELS="${CHANNELS}\"googlechat\":{\"serviceAccountKeyFile\":\"${GOOGLE_CHAT_CREDENTIALS}\"${GC_EXTRA}},"
+  ACTIVE_CHANNELS="${ACTIVE_CHANNELS}  ✅ Google Chat\n"
+fi
+
+# --- Microsoft Teams ---
+if [[ -n "${MSTEAMS_APP_ID:-}" && -n "${MSTEAMS_APP_PASSWORD:-}" ]]; then
+  CHANNELS="${CHANNELS}\"msteams\":{\"appId\":\"${MSTEAMS_APP_ID}\",\"appPassword\":\"${MSTEAMS_APP_PASSWORD}\"},"
+  ACTIVE_CHANNELS="${ACTIVE_CHANNELS}  ✅ Microsoft Teams\n"
+elif [[ -n "${MSTEAMS_APP_ID:-}" ]]; then
+  echo "[PocketClaw] ⚠ Microsoft Teams 需要同时配置 MSTEAMS_APP_ID 和 MSTEAMS_APP_PASSWORD"
+fi
+
+# --- Matrix ---
+if [[ -n "${MATRIX_HOMESERVER:-}" && -n "${MATRIX_USER_ID:-}" && -n "${MATRIX_ACCESS_TOKEN:-}" ]]; then
+  CHANNELS="${CHANNELS}\"matrix\":{\"homeserverUrl\":\"${MATRIX_HOMESERVER}\",\"userId\":\"${MATRIX_USER_ID}\",\"accessToken\":\"${MATRIX_ACCESS_TOKEN}\"},"
+  ACTIVE_CHANNELS="${ACTIVE_CHANNELS}  ✅ Matrix\n"
+elif [[ -n "${MATRIX_HOMESERVER:-}" ]]; then
+  echo "[PocketClaw] ⚠ Matrix 需要同时配置 MATRIX_HOMESERVER、MATRIX_USER_ID 和 MATRIX_ACCESS_TOKEN"
+fi
+
+# --- BlueBubbles (iMessage) ---
+if [[ -n "${BLUEBUBBLES_SERVER_URL:-}" && -n "${BLUEBUBBLES_PASSWORD:-}" ]]; then
+  CHANNELS="${CHANNELS}\"bluebubbles\":{\"serverUrl\":\"${BLUEBUBBLES_SERVER_URL}\",\"password\":\"${BLUEBUBBLES_PASSWORD}\"},"
+  ACTIVE_CHANNELS="${ACTIVE_CHANNELS}  ✅ BlueBubbles (iMessage)\n"
+elif [[ -n "${BLUEBUBBLES_SERVER_URL:-}" ]]; then
+  echo "[PocketClaw] ⚠ BlueBubbles 需要同时配置 BLUEBUBBLES_SERVER_URL 和 BLUEBUBBLES_PASSWORD"
+fi
+
+# --- Zalo ---
+if [[ -n "${ZALO_OA_ACCESS_TOKEN:-}" ]]; then
+  CHANNELS="${CHANNELS}\"zalo\":{\"oaAccessToken\":\"${ZALO_OA_ACCESS_TOKEN}\"},"
+  ACTIVE_CHANNELS="${ACTIVE_CHANNELS}  ✅ Zalo\n"
+fi
+
+# 移除末尾逗号，构建完整 channels JSON
+if [[ -n "$CHANNELS" ]]; then
+  CHANNELS="{${CHANNELS%,}}"
+  CHANNELS_BLOCK="\"channels\": $CHANNELS,"
+else
+  CHANNELS_BLOCK=""
+  ACTIVE_CHANNELS="  （无额外频道，仅 WebChat）\n"
+fi
+
+# ── 生成 openclaw.json（含频道配置） ──
 cat > "$CONFIG_FILE" << JSONEOF
 {
   "agents": {
@@ -145,6 +240,7 @@ cat > "$CONFIG_FILE" << JSONEOF
       }
     }
   },
+  $CHANNELS_BLOCK
   "gateway": {
     "port": 18789,
     "bind": "lan",
@@ -165,6 +261,11 @@ cat > "$CONFIG_FILE" << JSONEOF
 }
 JSONEOF
 
+# 修正：如果没有频道配置，移除多余的空行和逗号
+if [[ -z "$CHANNELS_BLOCK" ]]; then
+  sed -i.bak '/^  $/d' "$CONFIG_FILE" && rm -f "$CONFIG_FILE.bak"
+fi
+
 echo "============================================"
 echo "  PocketClaw 启动配置"
 echo "============================================"
@@ -172,6 +273,10 @@ echo "  提供商: $PROVIDER_LABEL"
 echo "  模型:   $MODEL_ID"
 echo "  API:    $BASE_URL"
 echo "  端口:   18789"
+echo "--------------------------------------------"
+echo "  聊天频道:"
+echo "  ✅ WebChat (内置)"
+printf "$ACTIVE_CHANNELS"
 echo "============================================"
 
 # ── 启动 OpenClaw Gateway ──

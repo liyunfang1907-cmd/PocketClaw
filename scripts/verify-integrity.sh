@@ -40,9 +40,15 @@ FILES=(
     "scripts/reset.bat"
     "scripts/install-update.sh"
     "scripts/install-update.bat"
+    "scripts/entrypoint.sh"
+    "scripts/setup-channels.sh"
+    "scripts/setup-channels.bat"
+    "scripts/verify-integrity.sh"
     "docker-compose.yml"
     "Dockerfile.custom"
     "config/openclaw.json"
+    "PocketClaw.bat"
+    "PocketClaw.command"
 )
 
 # ── 生成校验文件 ──

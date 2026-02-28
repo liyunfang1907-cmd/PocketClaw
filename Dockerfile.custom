@@ -14,10 +14,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     openssl \
+    openssh-client \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装 OpenClaw（使用淘宝 npm 镜像加速）
+# 将 git SSH 协议替换为 HTTPS（容器内无 GitHub SSH 密钥）
+RUN git config --global url.https://github.com/.insteadOf ssh://git@github.com/
+RUN git config --global url.https://github.com/.insteadOf git@github.com:
 RUN npm config set registry https://registry.npmmirror.com && \
     npm install -g openclaw@latest
 

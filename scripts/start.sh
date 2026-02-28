@@ -280,18 +280,70 @@ echo "[..] 构建中，请稍候..."
 mkdir -p "$PROJECT_DIR/data/logs"
 BUILD_LOG="$PROJECT_DIR/data/logs/build.log"
 
-BUILD_OK=0
-run_compose -f "$PROJECT_DIR/docker-compose.yml" up -d --build > "$BUILD_LOG" 2>&1 || BUILD_OK=1
-
-if [ "$BUILD_OK" -ne 0 ]; then
+# ── 第一步：构建镜像（与容器无关，不会被幽灵容器干扰）──
+run_compose -f "$PROJECT_DIR/docker-compose.yml" build > "$BUILD_LOG" 2>&1
+if [ $? -ne 0 ]; then
     echo ""
-    echo "[错误] 容器启动失败！"
+    echo "[错误] 镜像构建失败！"
     echo "  构建日志: $BUILD_LOG"
     echo "  可能原因:"
     echo "  1. Docker Hub 无法访问 → 请配置镜像加速器"
-    echo "  2. 端口 18789 被占用 → 关闭占用该端口的程序"
-    echo "  3. 磁盘空间不足 → docker system prune"
+    echo "  2. 磁盘空间不足 → docker system prune"
     exit 1
+fi
+echo "[OK] 镜像构建完成"
+
+# ── 第二步：启动容器 ──
+# 先清理孤立容器和旧容器
+run_compose -f "$PROJECT_DIR/docker-compose.yml" down --remove-orphans >> "$BUILD_LOG" 2>&1 || true
+docker rm -f pocketclaw >> "$BUILD_LOG" 2>&1 || true
+
+# 尝试 docker compose up
+run_compose -f "$PROJECT_DIR/docker-compose.yml" up -d >> "$BUILD_LOG" 2>&1 || true
+
+# 等待几秒让容器启动
+sleep 3
+
+# 检查容器是否在运行
+if docker ps --filter "name=pocketclaw" --format "{{.Status}}" 2>/dev/null | grep -qi "up"; then
+    echo "[OK] 容器启动成功"
+else
+    # docker compose up 失败（可能有幽灵容器干扰），回退到 docker run
+    echo "[信息] 正在使用备用方式启动..."
+    docker rm -f pocketclaw >> "$BUILD_LOG" 2>&1 || true
+
+    # 从 docker-compose.yml 读取镜像名
+    IMAGE_NAME="pocketclaw-pocketclaw:latest"
+
+    # 创建网络（忽略已存在错误）
+    docker network create pocketclaw_pocketclaw-net >> "$BUILD_LOG" 2>&1 || true
+
+    # 直接 docker run
+    docker run -d \
+        --name pocketclaw \
+        --restart unless-stopped \
+        --network pocketclaw_pocketclaw-net \
+        -p 127.0.0.1:18789:18789 \
+        -v "$PROJECT_DIR/config/workspace:/home/node/.openclaw/workspace" \
+        -v "$PROJECT_DIR/data/credentials:/home/node/.openclaw/credentials" \
+        -v "$PROJECT_DIR/data/sessions:/home/node/.openclaw/sessions" \
+        -v "$PROJECT_DIR/data/logs:/home/node/.openclaw/logs" \
+        --env-file "$PROJECT_DIR/.env" \
+        "$IMAGE_NAME" >> "$BUILD_LOG" 2>&1
+
+    sleep 3
+    if docker ps --filter "name=pocketclaw" --format "{{.Status}}" 2>/dev/null | grep -qi "up"; then
+        echo "[OK] 容器启动成功（备用方式）"
+    else
+        echo ""
+        echo "[错误] 容器启动失败！"
+        echo "  构建日志: $BUILD_LOG"
+        echo "  可能原因:"
+        echo "  1. 端口 18789 被占用 → 关闭占用该端口的程序"
+        echo "  2. 磁盘空间不足 → docker system prune"
+        echo "  3. Docker 数据损坏 → 打开 Docker Desktop → 设置 → Reset to factory defaults"
+        exit 1
+    fi
 fi
 echo "[OK] 构建完成！"
 

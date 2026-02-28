@@ -42,6 +42,7 @@ echo "  完成。"
 echo "[2/5] 清理敏感文件..."
 secure_wipe "$PROJECT_DIR/.env"
 rm -f "$PROJECT_DIR/secrets/.env.encrypted"
+rm -f "$PROJECT_DIR/config/workspace/.provider"
 echo "  完成。"
 
 # --------------- 3. 删除数据 ---------------

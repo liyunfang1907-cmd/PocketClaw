@@ -77,11 +77,17 @@ cat > "$ENV_FILE" << ENVEOF
 # ── Docker Compose 项目名 ──
 COMPOSE_PROJECT_NAME=pocketclaw
 
+# ── 模型提供商 ──
+PROVIDER_NAME=zhipu
+
 # ── 默认模型 ──
-OPENCLAW_MODEL=zhipu/glm-4.7-flash
+OPENCLAW_MODEL=glm-4.7-flash
 
 # ── 智谱 AI (GLM-4.7-Flash 永久免费) ──
-ZHIPU_API_KEY=${GLM_KEY}
+OPENAI_API_KEY=${GLM_KEY}
+
+# ── Gateway 认证密码 ──
+GATEWAY_AUTH_PASSWORD=pocketclaw
 ENVEOF
 
 echo ""
@@ -121,4 +127,12 @@ fi
 
 echo ""
 echo "  接下来脚本将自动启动 PocketClaw。"
+echo ""
+cyan "  ┌─────────────────────────────────────────────────┐"
+cyan "  │  💡 提示: 除了浏览器 WebChat，你还可以接入:     │"
+echo "  │  Telegram / Discord / Slack / WhatsApp 等       │"
+echo "  │  10 种聊天软件来与 AI 对话！                    │"
+echo "  │                                                 │"
+echo "  │  配置方法：运行 bash scripts/setup-channels.sh  │"
+cyan "  └─────────────────────────────────────────────────┘"
 echo ""

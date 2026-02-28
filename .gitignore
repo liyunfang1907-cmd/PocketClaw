@@ -14,6 +14,9 @@ data/logs/*
 # Docker相关
 openclaw-src/
 
+# 开发备忘 - 不参与分发
+开发备忘.md
+
 # 系统文件
 .DS_Store
 ._*

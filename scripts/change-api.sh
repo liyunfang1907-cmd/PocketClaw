@@ -3,7 +3,7 @@
 # change-api.sh  —— 切换 AI 模型提供商 / 更新 API Key (macOS/Linux)
 # 支持: 智谱/DeepSeek/Moonshot/通义千问/零一万物/硅基流动
 # ============================================================
-set -uo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/_common.sh"
