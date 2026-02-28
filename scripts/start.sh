@@ -247,8 +247,24 @@ json.dump(cfg, open('$DAEMON_JSON','w'), indent=2)
     fi
 fi
 
-# ── 清理 macOS 资源分叉文件（防止 Docker 构建失败）──
+# ── 清理 macOS 资源分叉/隐藏文件（防止 Docker 构建失败 + 保持 USB 干净）──
 find "$PROJECT_DIR" -maxdepth 2 \( -name '._*' -o -name '.DS_Store' \) -delete 2>/dev/null || true
+
+# 清理 USB 根目录的 macOS 隐藏文件（Spotlight 索引、FSEvents、回收站等）
+if [[ "$(uname)" == "Darwin" ]]; then
+    USB_ROOT="$(cd "$PROJECT_DIR/.." && pwd)"
+    # 仅当父目录看起来像 USB 挂载点时才清理
+    if [[ "$USB_ROOT" == /Volumes/* ]] || [[ "$USB_ROOT" == /media/* ]] || [[ "$USB_ROOT" == /mnt/* ]]; then
+        rm -rf "$USB_ROOT/.Spotlight-V100" "$USB_ROOT/.Trashes" "$USB_ROOT/.fseventsd" 2>/dev/null || true
+        rm -f "$USB_ROOT/.DS_Store" 2>/dev/null || true
+        # 创建 .metadata_never_index 阻止 Spotlight 索引此驱动器
+        touch "$USB_ROOT/.metadata_never_index" 2>/dev/null || true
+        # 创建 .fseventsd/no_log 阻止 FSEvents 记录
+        mkdir -p "$USB_ROOT/.fseventsd" 2>/dev/null || true
+        touch "$USB_ROOT/.fseventsd/no_log" 2>/dev/null || true
+        echo "[清理] 已清除 USB 驱动器 macOS 隐藏文件并禁止重新生成"
+    fi
+fi
 
 # ── 启动 ──
 echo ""
