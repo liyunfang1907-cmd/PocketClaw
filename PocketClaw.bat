@@ -1,141 +1,141 @@
-@echo off
-setlocal EnableDelayedExpansion
-title PocketClaw AI ÖúÊÖ
-color 0A
-
-set "SCRIPT_DIR=%~dp0"
-cd /d "%SCRIPT_DIR%"
-set "PROJECT_DIR=%CD%"
-set "ENC_FILE=%PROJECT_DIR%\secrets\.env.encrypted"
-set "ENV_FILE=%PROJECT_DIR%\.env"
-
-REM --------------- È·±£ openssl ¿ÉÓÃ£¨Git for Windows ×Ô´ø£© ---------------
-where openssl >nul 2>&1
-if errorlevel 1 (
-    if exist "C:\Program Files\Git\usr\bin\openssl.exe" (
-        set "PATH=C:\Program Files\Git\usr\bin;%PATH%"
-    )
-)
-
-:menu
-cls
-echo.
-echo   ============================================
-echo        PocketClaw AI ÖúÊÖ - ¿ØÖÆÃæ°å
-echo   ============================================
-echo.
-
-REM ¼ì²âµ±Ç°×´Ì¬
-docker info >nul 2>&1
-if !ERRORLEVEL! neq 0 (
-    echo   [×´Ì¬] Docker Î´ÔËĞĞ
-) else (
-    docker ps --filter "name=pocketclaw" --format "{{.Status}}" 2>nul > "%TEMP%\oc_status.tmp"
-    set /p OC_STATUS=<"%TEMP%\oc_status.tmp" 2>nul
-    del /q "%TEMP%\oc_status.tmp" 2>nul
-    if "!OC_STATUS!"=="" (
-        echo   [×´Ì¬] PocketClaw Î´ÔËĞĞ
-    ) else (
-        echo   [×´Ì¬] PocketClaw ÔËĞĞÖĞ - !OC_STATUS!
-        echo   [µØÖ·] http://127.0.0.1:18789/chat
-    )
-)
-
-if exist "!ENC_FILE!" (
-    echo   [¼ÓÃÜ] ÒÑÅäÖÃ
-) else (
-    echo   [¼ÓÃÜ] Î´ÅäÖÃ£¨ĞèÒªÊ×´ÎÉèÖÃ£©
-)
-echo.
-echo   --------------------------------------------
-echo.
-echo     [1]  Æô¶¯ PocketClaw
-echo     [2]  Í£Ö¹ PocketClaw
-echo     [3]  ´ò¿ªÁÄÌìÒ³Ãæ
-echo     [4]  »» API Key
-echo     [5]  ²é¿´×´Ì¬/ÈÕÖ¾
-echo     [6]  ±¸·İÊı¾İ
-echo     [0]  ÍË³ö
-echo.
-echo   --------------------------------------------
-set /p "CHOICE=  ÇëÑ¡Ôñ [0-6]: "
-
-if "!CHOICE!"=="1" goto :do_start
-if "!CHOICE!"=="2" goto :do_stop
-if "!CHOICE!"=="3" goto :do_open
-if "!CHOICE!"=="4" goto :do_change_api
-if "!CHOICE!"=="5" goto :do_status
-if "!CHOICE!"=="6" goto :do_backup
-if "!CHOICE!"=="0" goto :do_exit
-
-echo.
-echo   [´íÎó] ÎŞĞ§Ñ¡Ôñ£¬ÇëÖØĞÂÊäÈë¡£
-timeout /t 2 >nul
-goto :menu
-
-REM ============================================================
-REM  Æô¶¯£¨Î¯ÍĞ¸ø scripts\start.bat£©
-REM ============================================================
-:do_start
-cls
-call "%PROJECT_DIR%\scripts\start.bat"
-goto :menu
-
-REM ============================================================
-REM  Í£Ö¹£¨Î¯ÍĞ¸ø scripts\stop.bat£©
-REM ============================================================
-:do_stop
-cls
-call "%PROJECT_DIR%\scripts\stop.bat"
-echo.
-set /p "GO_BACK=  °´»Ø³µ·µ»Ø²Ëµ¥£¬ÊäÈë q ÍË³ö: "
-if /i "!GO_BACK!"=="q" goto :do_exit
-goto :menu
-
-REM ============================================================
-REM  ´ò¿ªä¯ÀÀÆ÷
-REM ============================================================
-:do_open
-start "" "http://127.0.0.1:18789/chat"
-timeout /t 1 >nul
-goto :menu
-
-REM ============================================================
-REM  ¸ü»» API Key£¨Î¯ÍĞ¸ø scripts\change-api.bat£©
-REM ============================================================
-:do_change_api
-cls
-call "%PROJECT_DIR%\scripts\change-api.bat"
-pause
-goto :menu
-
-REM ============================================================
-REM  ²é¿´×´Ì¬/ÈÕÖ¾
-REM ============================================================
-:do_status
-cls
-call "%PROJECT_DIR%\scripts\status.bat"
-echo.
-echo   --- ×î½üÈÕÖ¾ ---
-echo.
-call "%PROJECT_DIR%\scripts\logs.bat"
-pause
-goto :menu
-
-REM ============================================================
-REM  ±¸·İÊı¾İ
-REM ============================================================
-:do_backup
-cls
-call "%PROJECT_DIR%\scripts\backup.bat"
-pause
-goto :menu
-
-REM ============================================================
-REM  ÍË³ö
-REM ============================================================
-:do_exit
-echo.
-echo   ÔÙ¼û£¡
-endlocal
-\r\n
+@echo off
+setlocal EnableDelayedExpansion
+title PocketClaw AI åŠ©æ‰‹
+color 0A
+
+set "SCRIPT_DIR=%~dp0"
+cd /d "%SCRIPT_DIR%"
+set "PROJECT_DIR=%CD%"
+set "ENC_FILE=%PROJECT_DIR%\secrets\.env.encrypted"
+set "ENV_FILE=%PROJECT_DIR%\.env"
+
+REM --------------- ç¡®ä¿ openssl å¯ç”¨ ---------------
+where openssl >nul 2>&1
+if errorlevel 1 (
+    if exist "C:\Program Files\Git\usr\bin\openssl.exe" (
+        set "PATH=C:\Program Files\Git\usr\bin;%PATH%"
+    )
+)
+
+:menu
+cls
+echo.
+echo   ============================================
+echo        PocketClaw AI åŠ©æ‰‹ - æ§åˆ¶é¢æ¿
+echo   ============================================
+echo.
+
+REM æ£€æµ‹å½“å‰çŠ¶æ€
+docker info >nul 2>&1
+if !ERRORLEVEL! neq 0 (
+    echo   [çŠ¶æ€] Docker æœªè¿è¡Œ
+) else (
+    docker ps --filter "name=pocketclaw" --format "{{.Status}}" 2>nul > "%TEMP%\oc_status.tmp"
+    set "OC_STATUS="
+    set /p OC_STATUS=<"%TEMP%\oc_status.tmp" 2>nul
+    del /q "%TEMP%\oc_status.tmp" 2>nul
+    if "!OC_STATUS!"=="" (
+        echo   [çŠ¶æ€] PocketClaw æœªå¯åŠ¨
+    ) else (
+        echo   [çŠ¶æ€] PocketClaw è¿è¡Œä¸­ - !OC_STATUS!
+        echo   [åœ°å€] http://127.0.0.1:18789/chat
+    )
+)
+
+if exist "!ENC_FILE!" (
+    echo   [åŠ å¯†] å·²é…ç½®
+) else (
+    echo   [åŠ å¯†] æœªé…ç½®ï¼ˆéœ€è¦é¦–æ¬¡è®¾ç½®ï¼‰
+)
+echo.
+echo   --------------------------------------------
+echo.
+echo     [1]  å¯åŠ¨ PocketClaw
+echo     [2]  åœæ­¢ PocketClaw
+echo     [3]  æ‰“å¼€èŠå¤©é¡µé¢
+echo     [4]  ä¿®æ”¹ API Key
+echo     [5]  æŸ¥çœ‹çŠ¶æ€/æ—¥å¿—
+echo     [6]  å¤‡ä»½æ•°æ®
+echo     [0]  é€€å‡º
+echo.
+echo   --------------------------------------------
+set /p "CHOICE=  è¯·é€‰æ‹© [0-6]: "
+
+if "!CHOICE!"=="1" goto :do_start
+if "!CHOICE!"=="2" goto :do_stop
+if "!CHOICE!"=="3" goto :do_open
+if "!CHOICE!"=="4" goto :do_change_api
+if "!CHOICE!"=="5" goto :do_status
+if "!CHOICE!"=="6" goto :do_backup
+if "!CHOICE!"=="0" goto :do_exit
+
+echo.
+echo   [é”™è¯¯] æ— æ•ˆé€‰æ‹©ï¼Œè¯·é‡æ–°è¾“å…¥ã€‚
+timeout /t 2 >nul
+goto :menu
+
+REM ============================================================
+REM  å¯åŠ¨
+REM ============================================================
+:do_start
+cls
+call "%PROJECT_DIR%\scripts\start.bat"
+goto :menu
+
+REM ============================================================
+REM  åœæ­¢
+REM ============================================================
+:do_stop
+cls
+call "%PROJECT_DIR%\scripts\stop.bat"
+echo.
+set /p "GO_BACK=  æŒ‰å›è½¦è¿”å›èœå•ï¼Œè¾“å…¥ q é€€å‡º: "
+if /i "!GO_BACK!"=="q" goto :do_exit
+goto :menu
+
+REM ============================================================
+REM  æ‰“å¼€æµè§ˆå™¨
+REM ============================================================
+:do_open
+start "" "http://127.0.0.1:18789/chat"
+timeout /t 1 >nul
+goto :menu
+
+REM ============================================================
+REM  ä¿®æ”¹ API Key
+REM ============================================================
+:do_change_api
+cls
+call "%PROJECT_DIR%\scripts\change-api.bat"
+pause
+goto :menu
+
+REM ============================================================
+REM  æŸ¥çœ‹çŠ¶æ€/æ—¥å¿—
+REM ============================================================
+:do_status
+cls
+call "%PROJECT_DIR%\scripts\status.bat"
+echo.
+echo   --- æœ€è¿‘æ—¥å¿— ---
+echo.
+call "%PROJECT_DIR%\scripts\logs.bat"
+pause
+goto :menu
+
+REM ============================================================
+REM  å¤‡ä»½æ•°æ®
+REM ============================================================
+:do_backup
+cls
+call "%PROJECT_DIR%\scripts\backup.bat"
+pause
+goto :menu
+
+REM ============================================================
+REM  é€€å‡º
+REM ============================================================
+:do_exit
+echo.
+echo   å†è§ï¼
+endlocal

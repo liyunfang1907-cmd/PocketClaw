@@ -96,10 +96,32 @@ if [ ! -f "$PROJECT_DIR/.env" ]; then
         echo "[OK] 解密成功"
     else
         echo "[警告] 未找到 .env 配置文件！正在启动配置向导..."
-        bash "$PROJECT_DIR/scripts/setup-env.sh"
+        bash "$PROJECT_DIR/scripts/setup-env.sh" || true
+        # setup-env.sh 加密后会删除明文 .env，此时需要走解密流程
         if [ ! -f "$PROJECT_DIR/.env" ]; then
-            echo "[错误] 配置未完成。"
-            exit 1
+            if [ -f "$ENC_FILE" ]; then
+                echo ""
+                echo "[信息] 配置已加密保存，现在需要解密以启动..."
+                read -s -p "请输入 Master Password: " MASTER_PASS
+                echo ""
+                if [ -z "$MASTER_PASS" ]; then
+                    echo "[错误] 密码不能为空。"
+                    exit 1
+                fi
+                if ! printf '%s' "$MASTER_PASS" | openssl enc -aes-256-cbc -d -salt -pbkdf2 -iter 100000 \
+                    -in "$ENC_FILE" \
+                    -out "$PROJECT_DIR/.env" \
+                    -pass stdin 2>/dev/null; then
+                    echo "[错误] 解密失败，密码可能不正确。"
+                    rm -f "$PROJECT_DIR/.env"
+                    exit 1
+                fi
+                unset MASTER_PASS
+                echo "[OK] 解密成功"
+            else
+                echo "[错误] 配置未完成。"
+                exit 1
+            fi
         fi
     fi
 fi

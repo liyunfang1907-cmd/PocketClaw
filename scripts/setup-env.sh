@@ -101,8 +101,7 @@ echo ""
 
 ENCRYPT_SCRIPT="$SCRIPT_DIR/encrypt-secrets.sh"
 if [ -f "$ENCRYPT_SCRIPT" ]; then
-    bash "$ENCRYPT_SCRIPT"
-    if [ $? -eq 0 ]; then
+    if bash "$ENCRYPT_SCRIPT"; then
         # 加密成功后安全擦除明文 .env
         source "$SCRIPT_DIR/_common.sh" 2>/dev/null || true
         if type secure_wipe &>/dev/null; then

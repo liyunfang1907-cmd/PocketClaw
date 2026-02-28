@@ -176,6 +176,13 @@ if exist "!PAYLOAD_DIR!\scripts" (
     echo   [OK] scripts/ 已更新
 )
 
+REM 复制 frontend/ 目录（完整覆盖）
+if exist "!PAYLOAD_DIR!\frontend" (
+    if not exist "!TARGET_DIR!\frontend" mkdir "!TARGET_DIR!\frontend"
+    xcopy /s /y /q "!PAYLOAD_DIR!\frontend\*" "!TARGET_DIR!\frontend\" >nul 2>&1
+    echo   [OK] frontend/ 已更新
+)
+
 REM 复制 config/openclaw.json（但保留 workspace/）
 if exist "!PAYLOAD_DIR!\config\openclaw.json" (
     copy /y "!PAYLOAD_DIR!\config\openclaw.json" "!TARGET_DIR!\config\openclaw.json" >nul 2>&1

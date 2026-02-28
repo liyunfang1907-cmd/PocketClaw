@@ -1337,7 +1337,9 @@ const MdRender = {
       .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, '')
       .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '')
       .replace(/<embed\b[^>]*\/?>/gi, '')
-      .replace(/\bon\w+\s*=\s*(['"]?)[\s\S]*?\1/gi, '');
+      .replace(/\bon\w+\s*=\s*(['"]?)[\s\S]*?\1/gi, '')
+      .replace(/\bhref\s*=\s*['"]?\s*javascript:/gi, 'href="#blocked:')
+      .replace(/\bsrc\s*=\s*['"]?\s*javascript:/gi, 'src="#blocked:');
   },
 
   render(text) {
@@ -1723,9 +1725,7 @@ document.addEventListener('DOMContentLoaded', () => {
   Session.init();
   Settings.init();
 
-  // 2. 从 localStorage 读取 Gateway 地址
-  const savedUrl = localStorage.getItem('pocketclaw_gateway') || detectWsUrl();
-  Gateway.url = savedUrl;
+  // 2. Gateway 地址已在 Gateway.init() 中从 pc_gateway_url 读取
 
   // 3. 绑定发送事件
   document.getElementById('btnSend')?.addEventListener('click', () => {

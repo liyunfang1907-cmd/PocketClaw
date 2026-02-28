@@ -32,9 +32,18 @@ FILES=(
     "scripts/decrypt-secrets.sh"
     "scripts/decrypt.bat"
     "scripts/change-api.bat"
+    "scripts/change-api.sh"
+    "scripts/_common.sh"
+    "scripts/backup.sh"
+    "scripts/backup.bat"
+    "scripts/reset.sh"
+    "scripts/reset.bat"
+    "scripts/install-update.sh"
+    "scripts/install-update.bat"
     "docker-compose.yml"
     "Dockerfile.custom"
     "config/openclaw.json"
+    "frontend/index.html"
 )
 
 # ── 生成校验文件 ──

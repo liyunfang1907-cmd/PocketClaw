@@ -49,19 +49,40 @@ echo [信息] 正在从官网下载 Docker Desktop（约 600MB）...
 echo        请耐心等待，下载速度取决于网络...
 echo.
 if not exist "%TEMP%\PocketClaw" mkdir "%TEMP%\PocketClaw"
-echo [下载中] 请稍候...
+set "DL_TARGET=%TEMP%\PocketClaw\DockerDesktopInstaller.exe"
+set "DL_URL=https://desktop.docker.com/win/main/amd64/Docker%%20Desktop%%20Installer.exe"
+REM 清除旧的不完整下载
+if exist "!DL_TARGET!" del /q "!DL_TARGET!"
+echo [下载中] 方式1: curl...
+curl.exe -L --progress-bar -o "!DL_TARGET!" "!DL_URL!"
+REM 如果 curl 创建了 0 字节文件也视为失败
+if exist "!DL_TARGET!" (
+    for %%A in ("!DL_TARGET!") do if %%~zA lss 1000 del /q "!DL_TARGET!"
+)
+if not exist "!DL_TARGET!" (
+    echo.
+    echo [信息] curl 下载失败（可能是 SSL 兼容性问题），切换 PowerShell 下载...
+    echo        这可能需要几分钟，请耐心等待...
+    powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri '!DL_URL!' -OutFile '!DL_TARGET!' -UseBasicParsing"
+)
 echo.
-curl.exe -L --progress-bar -o "%TEMP%\PocketClaw\DockerDesktopInstaller.exe" "https://desktop.docker.com/win/main/amd64/Docker%%20Desktop%%20Installer.exe"
-echo.
-if not exist "%TEMP%\PocketClaw\DockerDesktopInstaller.exe" (
+if not exist "!DL_TARGET!" (
     echo [错误] Docker Desktop 下载失败！请检查网络连接。
     echo        你也可以手动下载后放入 installers\ 目录:
     echo        https://www.docker.com/products/docker-desktop/
     pause
     exit /b 1
 )
+REM 验证下载文件大小（Docker Desktop 约 600MB，至少应 100MB）
+for %%A in ("!DL_TARGET!") do set "DL_SIZE=%%~zA"
+if !DL_SIZE! lss 100000000 (
+    echo [错误] 下载文件不完整（!DL_SIZE! 字节），请检查网络后重试。
+    del /q "!DL_TARGET!"
+    pause
+    exit /b 1
+)
 echo [OK] 下载完成
-set "DOCKER_INSTALLER=%TEMP%\PocketClaw\DockerDesktopInstaller.exe"
+set "DOCKER_INSTALLER=!DL_TARGET!"
 
 :install_docker
 echo.
@@ -236,6 +257,7 @@ echo        正在启动首次配置向导...
 echo.
 call "%PROJECT_DIR%\scripts\setup-env.bat"
 if not exist "%PROJECT_DIR%\.env" (
+    if exist "!ENC_FILE!" goto :decrypt_env
     echo [错误] 配置未完成，无法启动。
     pause
     exit /b 1

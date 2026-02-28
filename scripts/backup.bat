@@ -17,8 +17,12 @@ if "%~1"=="" (
     set "BACKUP_DIR=%~1"
 )
 
-REM 时间戳 (使用 wmic 保证 locale 无关)
+REM 时间戳 (优先 wmic，降级 PowerShell)
+set "DT="
 for /f "tokens=2 delims==" %%i in ('wmic os get localdatetime /value 2^>nul') do set "DT=%%i"
+if "!DT!"=="" (
+    for /f %%t in ('powershell -NoProfile -Command "Get-Date -Format 'yyyyMMddHHmmss'"') do set "DT=%%t"
+)
 set "SNAPSHOT_DIR=%BACKUP_DIR%\snapshot_%DT:~0,8%_%DT:~8,4%"
 
 echo.
