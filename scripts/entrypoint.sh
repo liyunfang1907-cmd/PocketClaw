@@ -16,9 +16,11 @@ ACTIVE_KEY="${OPENAI_API_KEY:-}"
 MODEL_ID="${OPENCLAW_MODEL:-}"
 AUTH_PASS="${GATEWAY_AUTH_PASSWORD:-pocketclaw}"
 
-# 向后兼容：旧版 ZHIPU_API_KEY
-if [[ -z "$ACTIVE_KEY" && -n "${ZHIPU_API_KEY:-}" ]]; then
-  ACTIVE_KEY="$ZHIPU_API_KEY"
+# 向后兼容：旧版 ZHIPU_API_KEY / docker-compose 默认空值
+if [[ -z "$ACTIVE_KEY" || "$ACTIVE_KEY" == "not-configured-yet" ]]; then
+  if [[ -n "${ZHIPU_API_KEY:-}" ]]; then
+    ACTIVE_KEY="$ZHIPU_API_KEY"
+  fi
 fi
 
 # 如果 workspace/.provider 存在，优先使用

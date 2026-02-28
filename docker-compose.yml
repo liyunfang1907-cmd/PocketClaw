@@ -17,7 +17,8 @@ services:
         required: false
     environment:
       - NODE_ENV=production
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-not-configured-yet}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ZHIPU_API_KEY=${ZHIPU_API_KEY:-}
       - OPENCLAW_MODEL=${OPENCLAW_MODEL:-glm-4.7-flash}
       - GATEWAY_AUTH_PASSWORD=${GATEWAY_AUTH_PASSWORD:-pocketclaw}
       - PROVIDER_NAME=${PROVIDER_NAME:-zhipu}
