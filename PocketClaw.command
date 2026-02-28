@@ -24,24 +24,6 @@ RESET='\033[0m'
 
 # (secure_wipe 已在 _common.sh 中定义)
 
-# ── 清理 macOS 隐藏文件 ──
-clean_dot_files() {
-    echo ""
-    echo -e "${CYAN}[信息]${RESET} 正在清理 macOS 产生的隐藏文件..."
-    local count=0
-    while IFS= read -r -d '' f; do
-        rm -f "$f" 2>/dev/null && count=$((count + 1))
-    done < <(find "$PROJECT_DIR" -name "._*" -print0 2>/dev/null)
-    while IFS= read -r -d '' f; do
-        rm -f "$f" 2>/dev/null && count=$((count + 1))
-    done < <(find "$PROJECT_DIR" -name ".DS_Store" -print0 2>/dev/null)
-    if [ "$count" -gt 0 ]; then
-        echo -e "${GREEN}[OK]${RESET} 已清理 $count 个隐藏文件"
-    else
-        echo -e "${GREEN}[OK]${RESET} 没有需要清理的隐藏文件"
-    fi
-}
-
 # ── 检查状态 ──
 show_status() {
     if ! command -v docker &>/dev/null; then
@@ -56,7 +38,7 @@ show_status() {
     status=$(docker ps --filter "name=pocketclaw" --format "{{.Status}}" 2>/dev/null)
     if [ -n "$status" ]; then
         echo -e "  ${GREEN}[状态] PocketClaw 运行中 - $status${RESET}"
-        echo -e "  ${CYAN}[地址] http://127.0.0.1:18789/chat#token=pocketclaw${RESET}"
+        echo -e "  ${CYAN}[地址] http://127.0.0.1:18789/pocketclaw${RESET}"
     else
         echo -e "  [状态] PocketClaw 未运行"
     fi
@@ -86,13 +68,9 @@ show_menu() {
     echo "    [1]  启动 PocketClaw"
     echo "    [2]  停止 PocketClaw（拔U盘前必须先停止）"
     echo "    [3]  打开聊天页面"
-    echo "    [4]  修改 API Key"
+    echo "    [4]  切换模型/API Key"
     echo "    [5]  查看状态 / 日志"
     echo "    [6]  备份数据"
-    echo ""
-    echo "    [7]  首次配置 / 重新配置"
-    echo "    [8]  加密配置文件"
-    echo "    [9]  清理 macOS 隐藏文件"
     echo ""
     echo "    [0]  退出"
     echo ""
@@ -121,7 +99,7 @@ do_stop() {
 #  打开浏览器
 # ============================================================
 do_open() {
-    open "http://127.0.0.1:18789/chat#token=pocketclaw" 2>/dev/null || xdg-open "http://127.0.0.1:18789/chat#token=pocketclaw" 2>/dev/null || true
+    open "http://127.0.0.1:18789/pocketclaw" 2>/dev/null || xdg-open "http://127.0.0.1:18789/pocketclaw" 2>/dev/null || true
     sleep 1
 }
 
@@ -150,20 +128,6 @@ do_status() {
     read -rp "  按回车返回菜单..." _
 }
 
-do_setup() {
-    echo ""
-    bash "$PROJECT_DIR/scripts/setup-env.sh"
-    echo ""
-    read -rp "  按回车返回菜单..." _
-}
-
-do_encrypt() {
-    echo ""
-    bash "$PROJECT_DIR/scripts/encrypt-secrets.sh"
-    echo ""
-    read -rp "  按回车返回菜单..." _
-}
-
 do_backup() {
     echo ""
     bash "$PROJECT_DIR/scripts/backup.sh"
@@ -176,7 +140,7 @@ do_backup() {
 # ============================================================
 while true; do
     show_menu
-    read -rp "  请选择 [0-9]: " CHOICE
+    read -rp "  请选择 [0-6]: " CHOICE
     case "$CHOICE" in
         1) do_start ;;
         2) do_stop ;;
@@ -184,9 +148,6 @@ while true; do
         4) do_change_api ;;
         5) do_status ;;
         6) do_backup ;;
-        7) do_setup ;;
-        8) do_encrypt ;;
-        9) clean_dot_files; read -rp "  按回车返回菜单..." _ ;;
         0) echo ""; echo "  再见！"; exit 0 ;;
         *) echo "  无效选择"; sleep 1 ;;
     esac

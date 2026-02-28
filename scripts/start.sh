@@ -23,9 +23,45 @@ echo ""
 
 # ── 检查 Docker ──
 if ! command -v docker &>/dev/null; then
-    echo "[错误] 未检测到 Docker！"
-    echo "       请先安装 Docker Desktop: https://www.docker.com/products/docker-desktop/"
-    exit 1
+    echo "[警告] 未检测到 Docker！正在自动安装..."
+    echo ""
+    if [[ "$(uname)" == "Darwin" ]]; then
+        # macOS: 通过 Homebrew 安装 Docker Desktop
+        if ! command -v brew &>/dev/null; then
+            echo "[信息] 未检测到 Homebrew，正在安装..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            # Apple Silicon 路径
+            if [ -f /opt/homebrew/bin/brew ]; then
+                eval "$(/opt/homebrew/bin/brew shellenv)"
+            fi
+        fi
+        echo "[信息] 正在通过 Homebrew 安装 Docker Desktop..."
+        brew install --cask docker
+        echo "[OK] Docker Desktop 已安装"
+        echo ""
+        echo "[信息] 正在启动 Docker Desktop（首次启动可能需要授权）..."
+        open -a "Docker"
+    else
+        # Linux: 通过官方脚本安装
+        echo "[信息] 正在通过官方脚本安装 Docker..."
+        curl -fsSL https://get.docker.com | sh
+        sudo usermod -aG docker "$USER" 2>/dev/null || true
+        sudo systemctl start docker 2>/dev/null || true
+        echo "[OK] Docker 已安装"
+    fi
+    echo ""
+    echo "[信息] 等待 Docker 引擎就绪（首次启动最多等待 180 秒）..."
+    WAIT_COUNT=0
+    while ! docker info &>/dev/null; do
+        sleep 5
+        WAIT_COUNT=$((WAIT_COUNT + 5))
+        if [ "$WAIT_COUNT" -ge 180 ]; then
+            echo "[错误] Docker 启动超时！请手动启动 Docker Desktop 后重试。"
+            exit 1
+        fi
+        echo "       已等待 ${WAIT_COUNT} 秒..."
+    done
+    echo "[OK] Docker 已就绪"
 fi
 
 if ! docker info &>/dev/null; then
@@ -205,8 +241,7 @@ echo "============================================"
 echo "  [OK] PocketClaw 已成功启动！"
 echo "============================================"
 echo ""
-echo "  官方界面: http://127.0.0.1:18789/chat#token=pocketclaw"
-echo "  WebChat:  http://127.0.0.1:18789/chat#token=pocketclaw"
+echo "  打开界面: http://127.0.0.1:18789/pocketclaw"
 
 
 # ── 清理明文 ──
@@ -217,7 +252,7 @@ fi
 
 # 打开浏览器
 if command -v open &>/dev/null; then
-    open "http://127.0.0.1:18789/chat#token=pocketclaw"
+    open "http://127.0.0.1:18789/pocketclaw"
 elif command -v xdg-open &>/dev/null; then
-    xdg-open "http://127.0.0.1:18789/chat#token=pocketclaw"
+    xdg-open "http://127.0.0.1:18789/pocketclaw"
 fi

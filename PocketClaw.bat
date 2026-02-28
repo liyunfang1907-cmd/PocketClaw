@@ -104,7 +104,7 @@ echo.
 
 echo     [1]  启动 PocketClaw
 
-echo     [2]  停止 PocketClaw
+echo     [2]  停止 PocketClaw（拔U盘前必须先停止）
 
 echo     [3]  打开聊天页面
 
