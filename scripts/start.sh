@@ -21,6 +21,41 @@ echo ""
 echo "[信息] 项目目录: $PROJECT_DIR"
 echo ""
 
+# ── Docker 就绪检测（5秒超时保护，防止 docker info 在引擎启动中无限挂起）──
+docker_is_ready() {
+    ( docker info >/dev/null 2>&1 ) &
+    local pid=$!
+    local i=0
+    while [ $i -lt 5 ]; do
+        if ! kill -0 "$pid" 2>/dev/null; then
+            wait "$pid" 2>/dev/null
+            return $?
+        fi
+        sleep 1
+        i=$((i + 1))
+    done
+    # 超时：杀掉挂起的 docker info
+    kill "$pid" 2>/dev/null
+    wait "$pid" 2>/dev/null
+    return 1
+}
+
+# ── 等待 Docker 引擎就绪（带超时计数器）──
+wait_for_docker() {
+    local max_wait=$1
+    local label=$2
+    echo "       等待 Docker 引擎就绪（最多等待 ${max_wait} 秒）..."
+    local elapsed=0
+    while ! docker_is_ready; do
+        elapsed=$((elapsed + 5))
+        if [ "$elapsed" -ge "$max_wait" ]; then
+            echo "[错误] Docker ${label}启动超时！请手动启动 Docker Desktop 后重试。"
+            exit 1
+        fi
+        echo "       已等待 ${elapsed} 秒..."
+    done
+}
+
 # ── 检查 Docker ──
 if ! command -v docker &>/dev/null; then
     echo "[警告] 未检测到 Docker！正在自动安装..."
@@ -71,34 +106,19 @@ if ! command -v docker &>/dev/null; then
         echo "[OK] Docker 已安装"
     fi
     echo ""
-    echo "[信息] 等待 Docker 引擎就绪（首次启动最多等待 180 秒）..."
-    WAIT_COUNT=0
-    while ! docker info &>/dev/null; do
-        sleep 5
-        WAIT_COUNT=$((WAIT_COUNT + 5))
-        if [ "$WAIT_COUNT" -ge 180 ]; then
-            echo "[错误] Docker 启动超时！请手动启动 Docker Desktop 后重试。"
-            exit 1
-        fi
-        echo "       已等待 ${WAIT_COUNT} 秒..."
-    done
+    wait_for_docker 180 ""
     echo "[OK] Docker 已就绪"
 fi
 
-if ! docker info &>/dev/null; then
+if ! docker_is_ready; then
     echo "[信息] Docker 未运行，正在自动启动 Docker Desktop..."
+    # 先杀掉可能残留的僵死 Docker 进程，确保干净启动
+    if [[ "$(uname)" == "Darwin" ]]; then
+        killall "com.docker.backend" "com.docker.virtualization" 2>/dev/null || true
+        sleep 1
+    fi
     open -a "Docker" 2>/dev/null || true
-    echo "       等待 Docker 引擎就绪（最多等待 120 秒）..."
-    WAIT_COUNT=0
-    while ! docker info &>/dev/null; do
-        sleep 5
-        WAIT_COUNT=$((WAIT_COUNT + 5))
-        if [ "$WAIT_COUNT" -ge 120 ]; then
-            echo "[错误] Docker Desktop 启动超时！请手动启动后重试。"
-            exit 1
-        fi
-        echo "       已等待 ${WAIT_COUNT} 秒..."
-    done
+    wait_for_docker 120 "Desktop "
     echo "[OK] Docker Desktop 已自动启动"
 fi
 
