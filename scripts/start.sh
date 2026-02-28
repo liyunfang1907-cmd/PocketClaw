@@ -26,17 +26,38 @@ if ! command -v docker &>/dev/null; then
     echo "[警告] 未检测到 Docker！正在自动安装..."
     echo ""
     if [[ "$(uname)" == "Darwin" ]]; then
-        # macOS: 通过 Homebrew 安装 Docker Desktop
-        if ! command -v brew &>/dev/null; then
-            echo "[信息] 未检测到 Homebrew，正在安装..."
-            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-            # Apple Silicon 路径
-            if [ -f /opt/homebrew/bin/brew ]; then
-                eval "$(/opt/homebrew/bin/brew shellenv)"
+        # macOS: 优先用 brew，没有则直接下载 DMG
+        if command -v brew &>/dev/null; then
+            echo "[信息] 正在通过 Homebrew 安装 Docker Desktop..."
+            brew install --cask docker
+        else
+            echo "[信息] 正在直接下载 Docker Desktop..."
+            if [[ "$(uname -m)" == "arm64" ]]; then
+                DMG_URL="https://desktop.docker.com/mac/main/arm64/Docker.dmg"
+            else
+                DMG_URL="https://desktop.docker.com/mac/main/amd64/Docker.dmg"
             fi
+            DMG_FILE="/tmp/Docker.dmg"
+            echo "       架构: $(uname -m)"
+            echo "       下载地址: $DMG_URL"
+            echo "       文件较大（~600MB），请耐心等待..."
+            echo ""
+            if ! curl -fSL --progress-bar -o "$DMG_FILE" "$DMG_URL"; then
+                echo ""
+                echo "[错误] Docker Desktop 下载失败！"
+                echo "       请手动下载安装: https://www.docker.com/products/docker-desktop/"
+                exit 1
+            fi
+            echo ""
+            echo "[信息] 正在安装 Docker Desktop 到 /Applications..."
+            hdiutil attach "$DMG_FILE" -nobrowse -quiet
+            if ! cp -R "/Volumes/Docker/Docker.app" /Applications/ 2>/dev/null; then
+                echo "[信息] 需要管理员权限，请输入 Mac 开机密码:"
+                sudo cp -R "/Volumes/Docker/Docker.app" /Applications/
+            fi
+            hdiutil detach "/Volumes/Docker" -quiet 2>/dev/null || true
+            rm -f "$DMG_FILE"
         fi
-        echo "[信息] 正在通过 Homebrew 安装 Docker Desktop..."
-        brew install --cask docker
         echo "[OK] Docker Desktop 已安装"
         echo ""
         echo "[信息] 正在启动 Docker Desktop（首次启动可能需要授权）..."
