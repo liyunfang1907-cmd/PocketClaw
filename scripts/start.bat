@@ -371,7 +371,6 @@ echo   [OK] PocketClaw 已成功启动！
 echo ============================================
 echo.
 echo   控制面板: http://127.0.0.1:18789/pocketclaw
-echo   WebChat:  http://127.0.0.1:18789/pocketclaw
 echo.
 echo   停止服务: scripts\stop.bat
 echo   查看日志: scripts\logs.bat
@@ -379,32 +378,10 @@ echo   查看状态: scripts\status.bat
 echo ============================================
 echo.
 
-:: 选择打开方式
-echo   [1] 打开 PocketClaw 中文版（推荐）
-echo   [2] 打开 OpenClaw 原版界面
-echo   [3] 两个都打开
-echo   [4] 不打开浏览器
+:: 打开浏览器
+echo [信息] 正在打开浏览器...
+start "" "http://127.0.0.1:18789/pocketclaw"
 echo.
-choice /c 1234 /n /t 30 /d 1 /m "请选择 [1/2/3/4]（30秒后自动选1）: "
-if !ERRORLEVEL! equ 4 goto :skip_browser
-if !ERRORLEVEL! equ 3 goto :open_both
-if !ERRORLEVEL! equ 2 goto :open_original
-goto :open_chinese
-
-:open_both
-explorer.exe "%PROJECT_DIR%\frontend\index.html"
-timeout /t 2 /nobreak >nul
-start "" "http://127.0.0.1:18789/pocketclaw"
-goto :skip_browser
-
-:open_original
-start "" "http://127.0.0.1:18789/pocketclaw"
-goto :skip_browser
-
-:open_chinese
-explorer.exe "%PROJECT_DIR%\frontend\index.html"
-
-:skip_browser
 
 :: ── 安全擦除明文 .env（覆写后删除，ExFAT 最佳努力） ──
 if exist "!ENC_FILE!" (

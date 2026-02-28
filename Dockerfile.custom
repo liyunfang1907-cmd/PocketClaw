@@ -36,9 +36,6 @@ ARG CACHE_DATE=0
 # 将配置文件 COPY 到镜像内（避免 ExFAT USB 上 bind mount 的 EBUSY 问题）
 COPY --chown=node:node config/openclaw.json /home/node/.openclaw/openclaw.json
 
-# 将中文前端 COPY 到 canvas 目录（通过 http://127.0.0.1:18789/__openclaw__/canvas/ 访问）
-COPY --chown=node:node frontend/ /home/node/.openclaw/canvas/
-
 USER node
 
 EXPOSE 18789

@@ -43,7 +43,6 @@ FILES=(
     "docker-compose.yml"
     "Dockerfile.custom"
     "config/openclaw.json"
-    "frontend/index.html"
 )
 
 # ── 生成校验文件 ──

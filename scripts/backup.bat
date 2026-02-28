@@ -38,7 +38,7 @@ REM --------------- 备份核心文件 ---------------
 echo [1/3] 备份核心文件...
 
 REM 目录
-for %%D in (config secrets scripts frontend) do (
+for %%D in (config secrets scripts) do (
     if exist "%PROJECT_DIR%\%%D" (
         xcopy /E /I /Q "%PROJECT_DIR%\%%D" "%SNAPSHOT_DIR%\%%D" >nul 2>&1
         echo   + %%D\

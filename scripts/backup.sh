@@ -32,7 +32,6 @@ mkdir -p "$SNAPSHOT_DIR"
 ITEMS=(
     "config"
     "secrets"
-    "frontend"
     "scripts"
     "docker-compose.yml"
     "Dockerfile.custom"
