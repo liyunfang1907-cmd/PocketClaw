@@ -73,10 +73,13 @@ echo # -- Docker Compose 项目名 --
 echo COMPOSE_PROJECT_NAME=pocketclaw
 echo.
 echo # -- 默认模型 --
-echo OPENCLAW_MODEL=zhipu/glm-4.7-flash
+echo OPENCLAW_MODEL=glm-4.7-flash
 echo.
 echo # -- 智谱 AI (GLM-4.7-Flash 永久免费^) --
-echo ZHIPU_API_KEY=!GLM_KEY!
+echo OPENAI_API_KEY=!GLM_KEY!
+echo.
+echo # -- 模型提供商 --
+echo PROVIDER_NAME=zhipu
 echo.
 echo # -- Gateway 认证密码 --
 echo GATEWAY_AUTH_PASSWORD=pocketclaw

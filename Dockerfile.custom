@@ -33,12 +33,16 @@ RUN mkdir -p /home/node/.openclaw/workspace \
 # 缓存破坏参数（更改配置后用 --build-arg CACHE_DATE=$(date +%s) 强制刷新后续层）
 ARG CACHE_DATE=0
 
-# 将配置文件 COPY 到镜像内（避免 ExFAT USB 上 bind mount 的 EBUSY 问题）
+# 将配置文件 COPY 到镜像内（作为默认值，entrypoint 会动态覆盖）
 COPY --chown=node:node config/openclaw.json /home/node/.openclaw/openclaw.json
+
+# 复制启动入口脚本
+COPY --chown=node:node scripts/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 USER node
 
 EXPOSE 18789
 
-# 启动 Gateway
-CMD ["openclaw", "gateway", "--port", "18789", "--verbose"]
+# 使用自定义入口脚本（动态生成配置后启动 OpenClaw）
+ENTRYPOINT ["/app/entrypoint.sh"]

@@ -1,9 +1,8 @@
 @echo off
 setlocal EnableDelayedExpansion
 REM ============================================================
-REM change-api.bat  ¡ª¡ª ¿ìËÙ¸ü»» GLM API Key [Windows]
-REM ×Ô¶¯½âÃÜ ¡ú ĞŞ¸Ä ¡ú ÖØĞÂ¼ÓÃÜ ¡ú ÖØÆôÈİÆ÷
-REM ÓÃ·¨: scripts\change-api.bat
+REM change-api.bat  â€”â€” åˆ‡æ¢ AI æ¨¡å‹æä¾›å•† / æ›´æ–° API Key
+REM æ”¯æŒ: æ™ºè°±/DeepSeek/Moonshot/é€šä¹‰åƒé—®/é›¶ä¸€ä¸‡ç‰©/ç¡…åŸºæµåŠ¨
 REM ============================================================
 
 set "SCRIPT_DIR=%~dp0"
@@ -12,8 +11,11 @@ set "PROJECT_DIR=%CD%"
 
 set "ENV_FILE=%PROJECT_DIR%\.env"
 set "ENC_FILE=%PROJECT_DIR%\secrets\.env.encrypted"
+set "PROVIDER_FILE=%PROJECT_DIR%\config\workspace\.provider"
+set "NEED_REENCRYPT=0"
+set "MASTER_PASS="
 
-REM --------------- È·±£ openssl ¿ÉÓÃ£¨Git for Windows ×Ô´ø£© ---------------
+REM --------------- ç¡®ä¿ openssl å¯ç”¨ ---------------
 where openssl >nul 2>&1
 if errorlevel 1 (
     if exist "C:\Program Files\Git\usr\bin\openssl.exe" (
@@ -22,89 +24,240 @@ if errorlevel 1 (
 )
 
 echo.
-echo ======================================
-echo    ¿ìËÙ¸ü»» GLM API Key
-echo ======================================
+echo ===================================================
+echo       PocketClaw æ¨¡å‹åˆ‡æ¢å·¥å…·
+echo ===================================================
+echo.
+echo   é€‰æ‹© AI æ¨¡å‹æä¾›å•†:
+echo.
+echo   [1] æ™ºè°± AI          (æ¨èï¼Œå…¨éƒ¨å…è´¹)
+echo       GLM-4.7-Flash / GLM-4.6V-Flash / GLM-Z1-Flash
+echo       æ³¨å†Œ: https://open.bigmodel.cn
+echo.
+echo   [2] DeepSeek          (æ€§ä»·æ¯”æœ€é«˜)
+echo       DeepSeek-V3 / DeepSeek-R1
+echo       æ³¨å†Œ: https://platform.deepseek.com
+echo.
+echo   [3] Moonshot/Kimi     (é•¿æ–‡æœ¬èƒ½åŠ›å¼º)
+echo       Moonshot-v1 (8K/32K/128K)
+echo       æ³¨å†Œ: https://platform.moonshot.cn
+echo.
+echo   [4] é€šä¹‰åƒé—® Qwen     (é˜¿é‡Œäº‘)
+echo       Qwen-Turbo / Qwen-Plus / Qwen-Max
+echo       æ³¨å†Œ: https://dashscope.console.aliyun.com
+echo.
+echo   [5] é›¶ä¸€ä¸‡ç‰© Yi       (æ€§èƒ½ä¼˜ç§€)
+echo       Yi-Lightning / Yi-Large
+echo       æ³¨å†Œ: https://platform.lingyiwanwu.com
+echo.
+echo   [6] ç¡…åŸºæµåŠ¨          (å…è´¹å¼€æºæ¨¡å‹èšåˆ)
+echo       DeepSeek V3/R1 / Qwen / GLM (å‡å…è´¹)
+echo       æ³¨å†Œ: https://cloud.siliconflow.cn
+echo.
+echo   [0] ä»…æ›´æ–°å½“å‰ API Key (ä¸åˆ‡æ¢æä¾›å•†)
+echo.
+choice /c 1234560 /n /m "è¯·é€‰æ‹© [0-6]: "
+set "MENU_CHOICE=!ERRORLEVEL!"
+
+if !MENU_CHOICE! equ 7 goto :update_key_only
+
+if !MENU_CHOICE! equ 1 (
+    set "PROV=zhipu"
+    set "PROV_NAME=æ™ºè°± AI"
+    set "DEFAULT_MODEL=glm-4.7-flash"
+    set "KEY_URL=https://open.bigmodel.cn/usercenter/apikeys"
+)
+if !MENU_CHOICE! equ 2 (
+    set "PROV=deepseek"
+    set "PROV_NAME=DeepSeek"
+    set "DEFAULT_MODEL=deepseek-chat"
+    set "KEY_URL=https://platform.deepseek.com/api_keys"
+)
+if !MENU_CHOICE! equ 3 (
+    set "PROV=moonshot"
+    set "PROV_NAME=Moonshot/Kimi"
+    set "DEFAULT_MODEL=moonshot-v1-auto"
+    set "KEY_URL=https://platform.moonshot.cn/console/api-keys"
+)
+if !MENU_CHOICE! equ 4 (
+    set "PROV=qwen"
+    set "PROV_NAME=é€šä¹‰åƒé—® Qwen"
+    set "DEFAULT_MODEL=qwen-turbo-latest"
+    set "KEY_URL=https://dashscope.console.aliyun.com/apiKey"
+)
+if !MENU_CHOICE! equ 5 (
+    set "PROV=yi"
+    set "PROV_NAME=é›¶ä¸€ä¸‡ç‰© Yi"
+    set "DEFAULT_MODEL=yi-lightning"
+    set "KEY_URL=https://platform.lingyiwanwu.com/apikeys"
+)
+if !MENU_CHOICE! equ 6 (
+    set "PROV=siliconflow"
+    set "PROV_NAME=ç¡…åŸºæµåŠ¨ SiliconFlow"
+    set "DEFAULT_MODEL=deepseek-ai/DeepSeek-V3"
+    set "KEY_URL=https://cloud.siliconflow.cn/account/ak"
+)
+
+echo.
+echo   å·²é€‰æ‹©: !PROV_NAME!
+echo   è·å– API Key: !KEY_URL!
 echo.
 
-REM --------------- Èç¹û .env ²»´æÔÚ, ³¢ÊÔ½âÃÜ ---------------
+set "NEW_KEY="
+set /p "NEW_KEY=  è¯·ç²˜è´´ä½ çš„ !PROV_NAME! API Key: "
+if "!NEW_KEY!"=="" (
+    echo   [é”™è¯¯] API Key ä¸èƒ½ä¸ºç©ºã€‚
+    popd
+    pause
+    exit /b 1
+)
+
+echo.
+echo [ä¿¡æ¯] æ­£åœ¨ä¿å­˜é…ç½®...
+
+REM å†™å…¥ workspace/.provider (entrypoint.sh è¯»å–æ­¤æ–‡ä»¶)
+(
+echo # PocketClaw Provider Config
+echo PROVIDER_NAME=!PROV!
+echo API_KEY=!NEW_KEY!
+echo MODEL_ID=!DEFAULT_MODEL!
+) > "!PROVIDER_FILE!"
+
+echo   [OK] æä¾›å•†é…ç½®å·²ä¿å­˜
+
+REM åŒæ—¶æ›´æ–° .env (ä¿æŒä¸€è‡´)
+call :do_update_env
+goto :restart_prompt
+
+REM ============================================================
+:update_key_only
+REM ä»…æ›´æ–° API Key (ä¸åˆ‡æ¢æä¾›å•†)
+echo.
+
+REM å¦‚æœ .env ä¸å­˜åœ¨ï¼Œå…ˆè§£å¯†
 if not exist "%ENV_FILE%" (
     if exist "%ENC_FILE%" (
-        echo [ĞÅÏ¢] ÕıÔÚ½âÃÜ .env ...
+        echo [ä¿¡æ¯] æ­£åœ¨è§£å¯† .env ...
         for /f "delims=" %%p in ('powershell -NoProfile -Command "$p = Read-Host -Prompt '  Master Password' -AsSecureString; [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($p))"') do set "MASTER_PASS=%%p"
         <nul set /p ="!MASTER_PASS!"| openssl enc -aes-256-cbc -d -salt -pbkdf2 -iter 100000 ^
             -in "%ENC_FILE%" -out "%ENV_FILE%" -pass stdin 2>nul
         if errorlevel 1 (
-            echo [´íÎó] ½âÃÜÊ§°Ü, ÃÜÂë´íÎó.
+            echo [é”™è¯¯] è§£å¯†å¤±è´¥ã€‚
             popd & pause & exit /b 1
         )
         set "NEED_REENCRYPT=1"
-        echo [OK] ½âÃÜ³É¹¦.
     ) else (
-        echo [´íÎó] Î´ÕÒµ½ .env »ò .env.encrypted
-        echo ÇëÏÈÔËĞĞ setup-env.bat
+        echo [é”™è¯¯] æœªæ‰¾åˆ°é…ç½®æ–‡ä»¶ï¼Œè¯·å…ˆè¿è¡Œ setup-env.bat
         popd & pause & exit /b 1
     )
 ) else (
     set "NEED_REENCRYPT=0"
-    set "MASTER_PASS="
 )
 
-REM ¶ÁÈ¡µ±Ç°Öµ
-for /f "tokens=1,* delims==" %%a in ('findstr /i "ZHIPU_API_KEY" "%ENV_FILE%" 2^>nul') do set "CUR_KEY=%%b"
-
+REM æ˜¾ç¤ºå½“å‰ Key
+for /f "tokens=1,* delims==" %%a in ('findstr /i "OPENAI_API_KEY ZHIPU_API_KEY" "%ENV_FILE%" 2^>nul') do set "CUR_KEY=%%b"
+if defined CUR_KEY echo   å½“å‰ API Key: !CUR_KEY:~0,8!****
 echo.
-if defined CUR_KEY echo   µ±Ç° API Key: !CUR_KEY:~0,8!****
-echo.
-echo   »ñÈ¡ĞÂµÄ API Key: https://open.bigmodel.cn/usercenter/apikeys
-echo.
-
-set "NEW_KEY="
-set /p "NEW_KEY=ĞÂµÄ GLM API Key (Áô¿Õ±£³Ö²»±ä): "
-
+set /p "NEW_KEY=  æ–°çš„ API Key (ç•™ç©ºä¿æŒä¸å˜): "
 if "!NEW_KEY!"=="" (
-    echo   Î´ĞŞ¸Ä.
-    goto :cleanup
+    echo   æœªä¿®æ”¹ã€‚
+    goto :do_cleanup
 )
 
-echo.
-echo [ĞÅÏ¢] ÕıÔÚ¸üĞÂ .env ...
-powershell -Command "(Get-Content '%ENV_FILE%') -replace '^ZHIPU_API_KEY=.*', 'ZHIPU_API_KEY=!NEW_KEY!' | Set-Content '%ENV_FILE%'"
-echo   [OK] GLM API Key ÒÑ¸üĞÂ
+REM æ›´æ–° .env ä¸­çš„ key
+powershell -NoProfile -Command "(Get-Content '%ENV_FILE%') -replace '^(OPENAI_API_KEY|ZHIPU_API_KEY)=.*', 'OPENAI_API_KEY=!NEW_KEY!' | Set-Content '%ENV_FILE%'"
+echo   [OK] API Key å·²æ›´æ–°
 
-REM --------------- ÖØĞÂ¼ÓÃÜ ---------------
+REM åŒæ—¶æ›´æ–° workspace/.provider (å¦‚æœå­˜åœ¨)
+if exist "!PROVIDER_FILE!" (
+    powershell -NoProfile -Command "(Get-Content '!PROVIDER_FILE!') -replace '^API_KEY=.*', 'API_KEY=!NEW_KEY!' | Set-Content '!PROVIDER_FILE!'"
+    echo   [OK] Provider é…ç½®å·²åŒæ­¥
+)
+
+REM é‡æ–°åŠ å¯†
 if "!NEED_REENCRYPT!"=="1" (
-    echo.
-    echo [ĞÅÏ¢] ÖØĞÂ¼ÓÃÜ .env ...
+    echo [ä¿¡æ¯] é‡æ–°åŠ å¯† .env ...
     <nul set /p ="!MASTER_PASS!"| openssl enc -aes-256-cbc -salt -pbkdf2 -iter 100000 ^
-        -in "%ENV_FILE%" -out "%ENC_FILE%" -pass stdin
+        -in "%ENV_FILE%" -out "%ENC_FILE%" -pass stdin 2>nul
     if errorlevel 1 (
-        echo [´íÎó] ÖØĞÂ¼ÓÃÜÊ§°Ü! Ã÷ÎÄ .env ÒÑ±£Áô, ÇëÊÖ¶¯´¦Àí.
-        popd & pause & exit /b 1
+        echo [è­¦å‘Š] é‡æ–°åŠ å¯†å¤±è´¥ã€‚
+    ) else (
+        echo   [OK] å·²é‡æ–°åŠ å¯†
     )
-    echo [OK] ÒÑÖØĞÂ¼ÓÃÜ.
+)
+goto :restart_prompt
+
+REM ============================================================
+:do_update_env
+REM æ›´æ–°æˆ–åˆ›å»º .env æ–‡ä»¶
+
+if not exist "%ENV_FILE%" (
+    if exist "%ENC_FILE%" (
+        for /f "delims=" %%p in ('powershell -NoProfile -Command "$p = Read-Host -Prompt '  Master Password' -AsSecureString; [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($p))"') do set "MASTER_PASS=%%p"
+        <nul set /p ="!MASTER_PASS!"| openssl enc -aes-256-cbc -d -salt -pbkdf2 -iter 100000 ^
+            -in "%ENC_FILE%" -out "%ENV_FILE%" -pass stdin 2>nul
+        set "NEED_REENCRYPT=1"
+    )
 )
 
-REM --------------- Ñ¯ÎÊÊÇ·ñÖØÆô ---------------
+if exist "%ENV_FILE%" (
+    powershell -NoProfile -Command "$c = Get-Content '%ENV_FILE%'; $c = $c -replace '^(OPENAI_API_KEY|ZHIPU_API_KEY)=.*', 'OPENAI_API_KEY=!NEW_KEY!'; $c = $c -replace '^PROVIDER_NAME=.*', 'PROVIDER_NAME=!PROV!'; $c = $c -replace '^OPENCLAW_MODEL=.*', 'OPENCLAW_MODEL=!DEFAULT_MODEL!'; $c | Set-Content '%ENV_FILE%'"
+) else (
+    (
+    echo COMPOSE_PROJECT_NAME=pocketclaw
+    echo PROVIDER_NAME=!PROV!
+    echo OPENCLAW_MODEL=!DEFAULT_MODEL!
+    echo OPENAI_API_KEY=!NEW_KEY!
+    echo GATEWAY_AUTH_PASSWORD=pocketclaw
+    ) > "%ENV_FILE%"
+)
+echo   [OK] .env å·²æ›´æ–°
+
+if "!NEED_REENCRYPT!"=="1" (
+    echo [ä¿¡æ¯] é‡æ–°åŠ å¯† .env ...
+    <nul set /p ="!MASTER_PASS!"| openssl enc -aes-256-cbc -salt -pbkdf2 -iter 100000 ^
+        -in "%ENV_FILE%" -out "%ENC_FILE%" -pass stdin 2>nul
+    if errorlevel 1 (
+        echo [è­¦å‘Š] é‡æ–°åŠ å¯†å¤±è´¥ã€‚
+    ) else (
+        echo   [OK] å·²é‡æ–°åŠ å¯†
+    )
+)
+exit /b 0
+
+REM ============================================================
+:restart_prompt
 echo.
-set /p "RESTART=ÊÇ·ñÖØÆô PocketClaw Ê¹ÅäÖÃÉúĞ§? (y/N): "
-if /i "!RESTART!"=="y" (
-    echo [ĞÅÏ¢] ÖØÆôÈİÆ÷...
-    docker compose -f "%PROJECT_DIR%\docker-compose.yml" up -d --force-recreate 2>nul || docker-compose -f "%PROJECT_DIR%\docker-compose.yml" up -d --force-recreate 2>nul
-    echo [OK] ÖØÆôÍê³É.
+set /p "RESTART=æ˜¯å¦é‡å¯ PocketClaw ä½¿æ›´æ”¹ç”Ÿæ•ˆ? (Y/n): "
+if /i "!RESTART!"=="n" (
+    echo.
+    echo [æç¤º] ç¨åæ‰‹åŠ¨é‡å¯: docker compose restart
+    goto :do_cleanup
 )
 
-:cleanup
-REM Èç¹ûÊÇ´Ó¼ÓÃÜÎÄ¼ş½âÃÜµÄ, °²È«²Á³ıÃ÷ÎÄ
+echo [ä¿¡æ¯] æ­£åœ¨é‡å¯ PocketClaw...
+docker compose restart pocketclaw 2>nul
+if !ERRORLEVEL! neq 0 (
+    echo [ä¿¡æ¯] å°è¯•å®Œå…¨é‡å»º...
+    docker compose up -d --build 2>nul
+)
+echo [OK] é‡å¯å®Œæˆï¼
+echo.
+if defined PROV_NAME (
+    echo   å½“å‰æä¾›å•†: !PROV_NAME!
+    echo   å½“å‰æ¨¡å‹:   !DEFAULT_MODEL!
+)
+echo   æ§åˆ¶é¢æ¿:   http://127.0.0.1:18789/pocketclaw
+
+:do_cleanup
+REM å®‰å…¨æ“¦é™¤ä¸´æ—¶æ˜æ–‡ .env
 if "!NEED_REENCRYPT!"=="1" (
     powershell -NoProfile -Command "$f='%ENV_FILE%'; if(Test-Path $f){$s=(Get-Item $f).Length; $r=New-Object byte[] $s; [Security.Cryptography.RandomNumberGenerator]::Fill($r); [IO.File]::WriteAllBytes($f,$r)}" 2>nul
     del "%ENV_FILE%" 2>nul
-    echo [°²È«] ÒÑ°²È«²Á³ıÃ÷ÎÄ .env
+    echo [å®‰å…¨] å·²å®‰å…¨æ“¦é™¤æ˜æ–‡ .env
 )
 
 echo.
-echo [Íê³É] API Key ¸ü»»Íê³É!
-
 popd
 pause
 exit /b 0

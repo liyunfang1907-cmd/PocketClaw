@@ -35,8 +35,8 @@
             "compat": {}
           },
           {
-            "id": "glm-4v-flash",
-            "name": "GLM-4V Flash (视觉免费)",
+            "id": "glm-4.6v-flash",
+            "name": "GLM-4.6V Flash (视觉免费)",
             "input": ["text", "image"],
             "contextWindow": 8192,
             "maxTokens": 4096,
