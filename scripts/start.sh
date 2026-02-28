@@ -247,6 +247,9 @@ json.dump(cfg, open('$DAEMON_JSON','w'), indent=2)
     fi
 fi
 
+# ── 清理 macOS 资源分叉文件（防止 Docker 构建失败）──
+find "$PROJECT_DIR" -maxdepth 2 \( -name '._*' -o -name '.DS_Store' \) -delete 2>/dev/null || true
+
 # ── 启动 ──
 echo ""
 echo "┌──────────────────────────────────────────┐"

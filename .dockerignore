@@ -1,0 +1,24 @@
+# macOS 资源分叉文件（插入USB时自动生成，会导致Docker构建失败）
+._*
+.DS_Store
+.Spotlight-V100
+.fseventsd
+.Trashes
+
+# Windows 系统文件
+Thumbs.db
+desktop.ini
+System Volume Information
+
+# 运行时数据
+data/sessions/*
+data/logs/*
+data/credentials/*
+
+# Git
+.git
+.gitignore
+
+# 加密密钥
+secrets/*.key
+secrets/*.pem
