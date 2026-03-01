@@ -202,7 +202,7 @@ PocketClaw/
 
 ### 7.1 前置准备（每台新电脑仅需一次）
 
-**Windows（v1.0.3 全自动安装）：**
+**Windows（v1.1.0 全自动安装）：**
 
 Windows 用户无需手动安装任何软件。首次启动 `PocketClaw.bat` 时会自动：
 - 检测并启用 WSL2
@@ -252,7 +252,7 @@ export ALL_PROXY=socks5://127.0.0.1:7897
 
 ### 7.3 初始化项目
 
-v1.0.3 已预置 PocketClaw 源码（`openclaw-src/`）和完整目录结构，无需手动初始化。
+v1.1.0 已预置 PocketClaw 源码和完整目录结构，无需手动初始化。
 
 首次运行 `PocketClaw.bat`（Windows）或 `PocketClaw.command`（macOS）时，启动脚本会自动：
 1. 检查并下载源码（如 U 盘中不存在）
@@ -343,7 +343,7 @@ GATEWAY_BIND=loopback
 
 ### 9.1 智谱 GLM 配置（默认）
 
-v1.0.3 默认使用智谱 GLM-4.7-Flash（永久免费）。首次启动时配置向导会引导你输入 API Key。
+v1.1.0 默认使用智谱 GLM-4.7-Flash（永久免费）。首次启动时配置向导会引导你输入 API Key。
 
 1. 前往 [智谱开放平台](https://bigmodel.cn) 注册账号
 2. 在控制台创建 API Key
@@ -900,6 +900,7 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 | 完整性校验 & 汉化 | 2026-02-26 |
 | GLM 简化 & 全自动安装 | 2026-02-26 |
 | 多频道聊天支持 | 2026-02-28 |
+| 双系统稳定性修复 | 2026-03-01 |
 | PocketClaw 目标版本 | 2026.2.24 (latest stable) |
 | 许可证 | 本部署方案：个人使用；PocketClaw：MIT License |
 
@@ -913,6 +914,15 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 - [x] `setup-env.sh` / `setup-env.bat` 末尾添加频道配置提示
 - [x] `AGENTS.md` 更新频道能力列表（3→11 种）
 - [x] README 新增第 13 章「聊天频道配置」
+- [x] `start.sh` 新增 `docker_is_ready()` 5 秒超时保护，防止 `docker info` 无限卡死
+- [x] `start.sh` 新增 .env GBK 编码清理（`LC_ALL=C tr + grep`），解决跨平台编码问题
+- [x] `start.sh` 新增幽灵容器彻底清理（按名称 + 按镜像双重过滤）
+- [x] `stop.bat` 新增 WSL shutdown + 句柄清理，解决 USB 弹出锁定问题
+- [x] `stop.sh` 新增 macOS 隐藏文件清理（.DS_Store / .Spotlight-V100 等）
+- [x] `PocketClaw.bat` 修复秒退问题（menu handler 被截断）
+- [x] AI 提示词优化：强化身份锚定、精简能力列表、防身份注入攻击
+- [x] 使用指南.txt 更新至 v1.1.0，补充频道配置说明
+- [x] 108 MacBook + 105 Windows 双系统完整测试通过
 
 ### 19.2 v1.0.3 更新内容
 
