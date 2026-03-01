@@ -5,7 +5,7 @@
 Copyright (c) 2026 PocketClaw 项目作者
 
 本项目中的部署脚本（scripts/ 目录下所有文件）、配置方案（docker-compose.yml、
-Dockerfile.custom）、文档（README.md、注意事项.md、QUICKSTART_WINDOWS.md）
+Dockerfile.custom）、文档（README.md、注意事项.md、使用指南.txt）
 均为项目作者原创作品，受著作权法保护。
 
 ## 二、OpenClaw 上游许可
@@ -74,7 +74,7 @@ Dockerfile.custom）、文档（README.md、注意事项.md、QUICKSTART_WINDOWS
 - 因 API Key 泄露导致的经济损失
 - 因 U 盘丢失、损坏导致的任何后果
 - 因使用者自行修改代码导致的任何问题
-- 因第三方服务（Docker、DeepSeek、Telegram 等）变更导致的功能异常
+- 因第三方服务（Docker、智谱、Telegram 等）变更导致的功能异常
 - 任何直接的、间接的、附带的、特殊的或惩罚性的损害赔偿
 
 ### 4.3 修改代码的后果
