@@ -49,6 +49,14 @@ services:
     networks:
       - pocketclaw-net
 
+    # ── 健康检查（利用 OpenClaw 2026.3.1 内置 /health 端点） ──
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:18789/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
     # ── 安全加固 ──
     security_opt:
       - no-new-privileges:true           # 禁止容器内提权

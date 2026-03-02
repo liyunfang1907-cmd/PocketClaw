@@ -369,6 +369,9 @@ echo.
 echo   停止服务: scripts\stop.bat
 echo   查看日志: scripts\logs.bat
 echo   查看状态: scripts\status.bat
+echo.
+echo   [提示] 打开浏览器后若显示“无法访问”，
+echo          请等待约 10 秒后刷新页面即可
 echo ============================================
 echo.
 

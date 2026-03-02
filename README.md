@@ -133,7 +133,7 @@ PocketClaw/
 
 ### 5.1 前置准备（每台新电脑仅需一次）
 
-**Windows（v1.1.0 全自动安装）：**
+**Windows（v1.1.1 全自动安装）：**
 
 Windows 用户无需手动安装任何软件。首次启动 `PocketClaw.bat` 时会自动：
 - 检测并启用 WSL2
@@ -183,7 +183,7 @@ export ALL_PROXY=socks5://127.0.0.1:7897
 
 ### 5.3 初始化项目
 
-v1.1.0 已预置 PocketClaw 源码和完整目录结构，无需手动初始化。
+v1.1.1 已预置 PocketClaw 源码和完整目录结构，无需手动初始化。
 
 首次运行 `PocketClaw.bat`（Windows）或 `PocketClaw.command`（macOS）时，启动脚本会自动：
 1. 检查并下载源码（如 U 盘中不存在）
@@ -274,7 +274,7 @@ GATEWAY_BIND=loopback
 
 ### 7.1 智谱 GLM 配置（默认）
 
-v1.1.0 默认使用智谱 GLM-4.7-Flash（永久免费）。首次启动时配置向导会引导你输入 API Key。
+v1.1.1 默认使用智谱 GLM-4.7-Flash（永久免费）。首次启动时配置向导会引导你输入 API Key。
 
 1. 前往 [智谱开放平台](https://bigmodel.cn) 注册账号
 2. 在控制台创建 API Key
@@ -825,7 +825,7 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 
 | 项目 | 版本/日期 |
 |------|----------|
-| 本方案文档版本 | v1.1.0 |
+| 本方案文档版本 | v1.1.1 |
 | 创建日期 | 2026-02-25 |
 | 安全加固日期 | 2026-02-25 |
 | 远程更新功能 | 2026-02-25 |
@@ -833,10 +833,23 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 | GLM 简化 & 全自动安装 | 2026-02-26 |
 | 多频道聊天支持 | 2026-02-28 |
 | 双系统稳定性修复 | 2026-03-01 |
-| PocketClaw 目标版本 | 2026.2.24 (latest stable) |
+| 浏览器 & OpenClaw 升级 | 2026-03-02 |
+| PocketClaw 目标版本 | 2026.3.1 (latest stable) |
 | 许可证 | 本部署方案：个人使用；PocketClaw：MIT License |
 
-### 17.1 v1.1.0 更新内容
+### 17.1 v1.1.1 更新内容
+
+- [x] OpenClaw 引擎升级至 2026.3.1（含 Docker 健康检查端点、Windows spawn 修复、中文本地化等）
+- [x] Docker 容器健康检查：利用 /health 端点自动监测容器状态
+- [x] Chromium 无头浏览器集成：内置浏览器能力，支持网页浏览和截图
+- [x] Skills 持久化：技能文件跨容器重启保留
+- [x] AGENTS.md / TOOLS.md 更新浏览器 & web_fetch 能力描述
+- [x] identity 目录预创建，修复 Docker 中 EACCES 权限问题
+- [x] Windows 启动提示优化：浏览器延迟访问友好提示
+- [x] ZIP 打包改用 Python zipfile，修复 Windows 解压中文文件名乱码
+- [x] .bat 编码全面修复：GBK + CRLF + 无 chcp 65001（防字节吞噬 bug）
+
+### 17.2 v1.1.0 更新内容
 
 - [x] 新增 10 种聊天频道支持：Telegram、Discord、Slack、WhatsApp、Signal、Google Chat、Microsoft Teams、Matrix、BlueBubbles (iMessage)、Zalo
 - [x] 新增 `setup-channels.sh` / `setup-channels.bat` 频道配置向导
@@ -856,7 +869,7 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 - [x] 使用指南.txt 更新至 v1.1.0，补充频道配置说明
 - [x] 108 MacBook + 105 Windows 双系统完整测试通过
 
-### 17.2 v1.0.3 更新内容
+### 17.3 v1.0.3 更新内容
 
 - [x] 简化为智谱 GLM-4.7-Flash 单模型（永久免费）
 - [x] Windows 全自动安装：Docker Desktop、WSL2、Git 自动检测并安装
@@ -866,20 +879,20 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 - [x] 移除 Telegram/Email 冗余配置脚本
 - [x] 文档整合：删除 QUICKSTART_WINDOWS.md，统一使用使用指南.txt
 
-### 17.3 v1.0.2 更新内容
+### 17.4 v1.0.2 更新内容
 
 - [x] 新增 `LICENSE.md` 开源许可证
 - [x] 新增 `verify-integrity.sh` SHA-256 完整性校验
 - [x] 全部脚本界面汉化（67+ 处英文标签改为中文）
 
-### 17.4 v1.0.1 更新内容
+### 17.5 v1.0.1 更新内容
 
 - [x] 新增远程更新机制：`create-update.sh` 生成更新包，朋友一键安装
 - [x] 新增 `install-update.bat` / `install-update.sh` 更新安装器
 - [x] 新增 `VERSION` 版本追踪文件
 - [x] 自动扫描 U 盘位置、回滚备份、数据保护
 
-### 17.5 v1.0.0 安全加固清单
+### 17.6 v1.0.0 安全加固清单
 
 - [x] 修复 openssl `-pass pass:` 密码在进程列表中泄露（所有脚本改用 `-pass stdin`）
 - [x] Windows 密码输入改用 PowerShell `SecureString` 掩码显示

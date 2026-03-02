@@ -42,6 +42,7 @@ RUN mkdir -p /home/node/.openclaw/workspace \
              /home/node/.openclaw/canvas \
              /home/node/.openclaw/cron \
              /home/node/.openclaw/skills \
+             /home/node/.openclaw/identity \
     && chown -R node:node /home/node/.openclaw
 
 # 缓存破坏参数（更改配置后用 --build-arg CACHE_DATE=$(date +%s) 强制刷新后续层）
