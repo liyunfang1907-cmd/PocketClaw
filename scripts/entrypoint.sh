@@ -282,5 +282,62 @@ echo "  ✅ WebChat (内置)"
 printf "$ACTIVE_CHANNELS"
 echo "============================================"
 
+# ── 生成手机 PWA 入口页（解决主屏幕快捷方式 token 丢失问题）──
+CANVAS_DIR="$CONFIG_DIR/canvas"
+mkdir -p "$CANVAS_DIR"
+
+cat > "$CANVAS_DIR/app.html" << 'PWAEOF'
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="manifest" href="manifest.json">
+<title>PocketClaw</title>
+<style>*{margin:0;padding:0}html,body{width:100%;height:100%;overflow:hidden;background:#1a1a2e}iframe{width:100%;height:100vh;height:100dvh;border:none}</style>
+</head>
+<body>
+<iframe id="app" allow="microphone;camera"></iframe>
+<script>
+(function(){
+  var h=location.hash;
+  if(h&&h.indexOf('token=')>=0){
+    localStorage.setItem('pc_token',h.split('token=')[1].split('&')[0]);
+  }
+  var t=localStorage.getItem('pc_token')||'pocketclaw';
+  document.getElementById('app').src='/#token='+t;
+})();
+</script>
+</body>
+</html>
+PWAEOF
+
+cat > "$CANVAS_DIR/manifest.json" << 'MANEOF'
+{
+  "name": "PocketClaw",
+  "short_name": "PocketClaw",
+  "description": "你的便携 AI 助手",
+  "start_url": "app.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1a1a2e",
+  "theme_color": "#e94560",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🦞%3C/text%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
+MANEOF
+
+echo "[PocketClaw] 手机 PWA 入口已生成"
+
 # ── 启动 OpenClaw Gateway ──
 exec openclaw gateway --port 18789 --verbose

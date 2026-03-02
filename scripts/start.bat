@@ -380,7 +380,9 @@ echo ============================================
 echo.
 echo   控制面板: http://127.0.0.1:18789/#token=pocketclaw
 if not "!LAN_IP!"=="" (
-    echo   手机访问: http://!LAN_IP!:18789/#token=pocketclaw
+    echo   手机访问: http://!LAN_IP!:18789/__openclaw__/canvas/app.html
+    echo.
+    echo   [提示] 手机打开后可"添加到主屏幕"当 APP 使用
 )
 echo.
 echo   停止服务: scripts\stop.bat

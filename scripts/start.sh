@@ -424,7 +424,9 @@ echo "============================================"
 echo ""
 echo "  打开界面: $DASHBOARD_URL"
 if [ -n "$LAN_IP" ]; then
-echo "  手机访问: http://${LAN_IP}:18789/#token=${GATEWAY_TOKEN}"
+echo "  手机访问: http://${LAN_IP}:18789/__openclaw__/canvas/app.html"
+echo ""
+echo "  [提示] 手机打开后可"添加到主屏幕"当 APP 使用"
 fi
 
 
