@@ -361,11 +361,22 @@ if "!BUILD_RESULT!"=="FAIL" (
 
 echo.
 set /p PC_VER=<"%PROJECT_DIR%\VERSION"
+
+:: 检测局域网 IP（用于手机访问）
+set "LAN_IP="
+for /f "usebackq delims=" %%a in (`powershell -NoProfile -Command "try { (Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -ne $null } | Select-Object -First 1).IPv4Address.IPAddress } catch {}"`) do set "LAN_IP=%%a"
+if not "!LAN_IP!"=="" (
+    echo !LAN_IP!> "%PROJECT_DIR%\config\workspace\.host_ip"
+)
+
 echo ============================================
 echo   [OK] PocketClaw v!PC_VER! 已成功启动！
 echo ============================================
 echo.
 echo   控制面板: http://127.0.0.1:18789/#token=pocketclaw
+if not "!LAN_IP!"=="" (
+    echo   手机访问: http://!LAN_IP!:18789/#token=pocketclaw
+)
 echo.
 echo   停止服务: scripts\stop.bat
 echo   查看日志: scripts\logs.bat
@@ -399,6 +410,8 @@ if "!LATEST_VER!"=="" (
     echo   [更新] 发现新版本 v!LATEST_VER!
     echo          当前版本 v!PC_VER!
     echo ============================================
+    echo.
+    echo   （更新不会影响您的私有数据和配置）
     echo.
     set /p UPDATE_CHOICE="  是否一键更新？(Y/N, 默认N): "
     if /i "!UPDATE_CHOICE!"=="Y" (

@@ -401,6 +401,19 @@ echo "[OK] 构建完成！"
 GATEWAY_TOKEN="${GATEWAY_AUTH_PASSWORD:-pocketclaw}"
 DASHBOARD_URL="http://127.0.0.1:18789/#token=${GATEWAY_TOKEN}"
 
+# ── 检测局域网 IP（用于手机访问）──
+LAN_IP=""
+if command -v ifconfig &>/dev/null; then
+    LAN_IP=$(ifconfig | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | head -1)
+elif command -v ip &>/dev/null; then
+    LAN_IP=$(ip -4 addr show | grep -oE 'inet [0-9.]+' | grep -v '127.0.0.1' | awk '{print $2}' | head -1)
+elif command -v hostname &>/dev/null; then
+    LAN_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+fi
+if [ -n "$LAN_IP" ]; then
+    echo "$LAN_IP" > "$PROJECT_DIR/config/workspace/.host_ip"
+fi
+
 POCKETCLAW_VERSION=$(cat "$PROJECT_DIR/VERSION" 2>/dev/null || echo "unknown")
 
 echo ""
@@ -409,6 +422,9 @@ echo "  [OK] PocketClaw v${POCKETCLAW_VERSION} 已成功启动！"
 echo "============================================"
 echo ""
 echo "  打开界面: $DASHBOARD_URL"
+if [ -n "$LAN_IP" ]; then
+echo "  手机访问: http://${LAN_IP}:18789/#token=${GATEWAY_TOKEN}"
+fi
 
 
 # ── 版本更新检查 ──
@@ -435,6 +451,7 @@ else
     echo "         当前版本 v${POCKETCLAW_VERSION}"
     echo "============================================"
     echo ""
+    echo "  （更新不会影响您的私有数据和配置）"
     printf "  是否一键更新？(y/N): "
     read -r UPDATE_CHOICE
     if [ "$UPDATE_CHOICE" = "y" ] || [ "$UPDATE_CHOICE" = "Y" ]; then

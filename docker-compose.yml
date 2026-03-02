@@ -6,8 +6,8 @@ services:
     container_name: pocketclaw
     restart: unless-stopped
     ports:
-      # 默认仅本机访问；在 .env 中设置 LISTEN_HOST=0.0.0.0 可开启局域网访问
-      - "${LISTEN_HOST:-127.0.0.1}:18789:18789"
+      # 默认开启局域网访问，支持手机等设备通过同一 WiFi 连接
+      - "0.0.0.0:18789:18789"
     volumes:
       - ./config/workspace:/home/node/.openclaw/workspace
       - ./data/credentials:/home/node/.openclaw/credentials
