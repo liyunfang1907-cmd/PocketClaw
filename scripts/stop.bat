@@ -45,6 +45,8 @@ taskkill /F /IM "docker-sandbox.exe" >nul 2>&1
 taskkill /F /IM "com.docker.dev-envs.exe" >nul 2>&1
 timeout /t 2 /nobreak >nul
 echo       Docker 进程已关闭
+REM 删除防火墙规则
+netsh advfirewall firewall delete rule name="PocketClaw" >nul 2>&1
 echo.
 
 :: 步骤4：关闭 WSL 并清理占用U盘的句柄

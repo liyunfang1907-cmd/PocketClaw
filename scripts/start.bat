@@ -367,6 +367,11 @@ set "LAN_IP="
 for /f "usebackq delims=" %%a in (`powershell -NoProfile -Command "try { (Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -ne $null } | Select-Object -First 1).IPv4Address.IPAddress } catch {}"`) do set "LAN_IP=%%a"
 if not "!LAN_IP!"=="" (
     echo !LAN_IP!> "%PROJECT_DIR%\config\workspace\.host_ip"
+    REM 确保防火墙放行 18789 端口（允许手机访问）
+    netsh advfirewall firewall show rule name="PocketClaw" >nul 2>&1
+    if !ERRORLEVEL! neq 0 (
+        netsh advfirewall firewall add rule name="PocketClaw" dir=in action=allow protocol=TCP localport=18789 >nul 2>&1
+    )
 )
 
 echo ============================================

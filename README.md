@@ -825,7 +825,7 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 
 | 项目 | 版本/日期 |
 |------|----------|
-| 本方案文档版本 | v1.1.1 |
+| 本方案文档版本 | v1.1.2 |
 | 创建日期 | 2026-02-25 |
 | 安全加固日期 | 2026-02-25 |
 | 远程更新功能 | 2026-02-25 |
@@ -834,10 +834,22 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 | 多频道聊天支持 | 2026-02-28 |
 | 双系统稳定性修复 | 2026-03-01 |
 | 浏览器 & OpenClaw 升级 | 2026-03-02 |
+| 手机访问 & 代码审计修复 | 2026-03-02 |
 | PocketClaw 目标版本 | 2026.3.1 (latest stable) |
 | 许可证 | 本部署方案：个人使用；PocketClaw：MIT License |
 
-### 17.1 v1.1.1 更新内容
+### 17.1 v1.1.2 更新内容
+
+- [x] 手机访问修复：自动添加 Windows 防火墙规则放行 18789 端口
+- [x] 浏览器配置修复：noSandbox=true + defaultProfile=openclaw，解决 Docker 内 Chromium 无法启动
+- [x] URL 修复：change-api.bat/sh 中的控制面板地址修正为 /#token=pocketclaw
+- [x] stop.bat 安全升级：替换弃用 RNGCryptoServiceProvider，移除激进 dllhost 进程杀死
+- [x] start.sh docker run 回退修复：添加 skills 挂载 + 0.0.0.0 端口绑定
+- [x] 停止时自动清理防火墙规则（安全卸载）
+- [x] 使用指南新增手机/平板访问说明
+- [x] 添加 .gitkeep 确保空目录结构完整
+
+### 17.2 v1.1.1 更新内容
 
 - [x] OpenClaw 引擎升级至 2026.3.1（含 Docker 健康检查端点、Windows spawn 修复、中文本地化等）
 - [x] Docker 容器健康检查：利用 /health 端点自动监测容器状态
@@ -849,7 +861,7 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 - [x] ZIP 打包改用 Python zipfile，修复 Windows 解压中文文件名乱码
 - [x] .bat 编码全面修复：GBK + CRLF + 无 chcp 65001（防字节吞噬 bug）
 
-### 17.2 v1.1.0 更新内容
+### 17.3 v1.1.0 更新内容
 
 - [x] 新增 10 种聊天频道支持：Telegram、Discord、Slack、WhatsApp、Signal、Google Chat、Microsoft Teams、Matrix、BlueBubbles (iMessage)、Zalo
 - [x] 新增 `setup-channels.sh` / `setup-channels.bat` 频道配置向导
@@ -869,7 +881,7 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 - [x] 使用指南.txt 更新至 v1.1.0，补充频道配置说明
 - [x] 108 MacBook + 105 Windows 双系统完整测试通过
 
-### 17.3 v1.0.3 更新内容
+### 17.4 v1.0.3 更新内容
 
 - [x] 简化为智谱 GLM-4.7-Flash 单模型（永久免费）
 - [x] Windows 全自动安装：Docker Desktop、WSL2、Git 自动检测并安装
@@ -879,20 +891,20 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 - [x] 移除 Telegram/Email 冗余配置脚本
 - [x] 文档整合：删除 QUICKSTART_WINDOWS.md，统一使用使用指南.txt
 
-### 17.4 v1.0.2 更新内容
+### 17.5 v1.0.2 更新内容
 
 - [x] 新增 `LICENSE.md` 开源许可证
 - [x] 新增 `verify-integrity.sh` SHA-256 完整性校验
 - [x] 全部脚本界面汉化（67+ 处英文标签改为中文）
 
-### 17.5 v1.0.1 更新内容
+### 17.6 v1.0.1 更新内容
 
 - [x] 新增远程更新机制：`create-update.sh` 生成更新包，朋友一键安装
 - [x] 新增 `install-update.bat` / `install-update.sh` 更新安装器
 - [x] 新增 `VERSION` 版本追踪文件
 - [x] 自动扫描 U 盘位置、回滚备份、数据保护
 
-### 17.6 v1.0.0 安全加固清单
+### 17.7 v1.0.0 安全加固清单
 
 - [x] 修复 openssl `-pass pass:` 密码在进程列表中泄露（所有脚本改用 `-pass stdin`）
 - [x] Windows 密码输入改用 PowerShell `SecureString` 掩码显示
