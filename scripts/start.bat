@@ -360,8 +360,9 @@ if "!BUILD_RESULT!"=="FAIL" (
 )
 
 echo.
+set /p PC_VER=<"%PROJECT_DIR%\VERSION"
 echo ============================================
-echo   [OK] PocketClaw 已成功启动！
+echo   [OK] PocketClaw v!PC_VER! 已成功启动！
 echo ============================================
 echo.
 echo   控制面板: http://127.0.0.1:18789/#token=pocketclaw

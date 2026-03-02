@@ -31,8 +31,16 @@ ENV CHROMIUM_FLAGS="--no-sandbox --disable-gpu --disable-dev-shm-usage"
 # 将 git SSH 协议替换为 HTTPS（容器内无 GitHub SSH 密钥）
 RUN git config --global url.https://github.com/.insteadOf ssh://git@github.com/
 RUN git config --global url.https://github.com/.insteadOf git@github.com:
+
+# 复制 VERSION — 版本变更时自动刷新 npm install 缓存
+COPY VERSION /tmp/POCKETCLAW_VERSION
+# 手动缓存破坏: docker compose build --build-arg CACHE_DATE=$(date +%s)
+ARG CACHE_DATE=0
+
+# 优先从官方 npm 安装（获取最新版），失败则回退到国内镜像
 RUN npm config set registry https://registry.npmmirror.com && \
-    npm install -g openclaw@latest
+    (npm install -g openclaw@latest --registry https://registry.npmjs.org 2>/dev/null || \
+     npm install -g openclaw@latest)
 
 # ── 使用内置 node 用户（安全加固: 非 root） ──
 RUN mkdir -p /home/node/.openclaw/workspace \
@@ -44,9 +52,6 @@ RUN mkdir -p /home/node/.openclaw/workspace \
              /home/node/.openclaw/skills \
              /home/node/.openclaw/identity \
     && chown -R node:node /home/node/.openclaw
-
-# 缓存破坏参数（更改配置后用 --build-arg CACHE_DATE=$(date +%s) 强制刷新后续层）
-ARG CACHE_DATE=0
 
 # 将配置文件 COPY 到镜像内（作为默认值，entrypoint 会动态覆盖）
 COPY --chown=node:node config/openclaw.json /home/node/.openclaw/openclaw.json

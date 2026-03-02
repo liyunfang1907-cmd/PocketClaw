@@ -401,9 +401,11 @@ echo "[OK] 构建完成！"
 GATEWAY_TOKEN="${GATEWAY_AUTH_PASSWORD:-pocketclaw}"
 DASHBOARD_URL="http://127.0.0.1:18789/#token=${GATEWAY_TOKEN}"
 
+POCKETCLAW_VERSION=$(cat "$PROJECT_DIR/VERSION" 2>/dev/null || echo "unknown")
+
 echo ""
 echo "============================================"
-echo "  [OK] PocketClaw 已成功启动！"
+echo "  [OK] PocketClaw v${POCKETCLAW_VERSION} 已成功启动！"
 echo "============================================"
 echo ""
 echo "  打开界面: $DASHBOARD_URL"
