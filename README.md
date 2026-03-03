@@ -825,7 +825,7 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 
 | 项目 | 版本/日期 |
 |------|----------|
-| 本方案文档版本 | v1.1.2 |
+| 本方案文档版本 | v1.2.2 |
 | 创建日期 | 2026-02-25 |
 | 安全加固日期 | 2026-02-25 |
 | 远程更新功能 | 2026-02-25 |
@@ -835,10 +835,28 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 | 双系统稳定性修复 | 2026-03-01 |
 | 浏览器 & OpenClaw 升级 | 2026-03-02 |
 | 手机访问 & 代码审计修复 | 2026-03-02 |
-| PocketClaw 目标版本 | 2026.3.1 (latest stable) |
+| 版本检查 & tools.profile 修复 | 2026-03-03 |
+| Windows 版本检查 & 桌面语音移除 | 2026-03-03 |
+| PocketClaw 目标版本 | 2026.3.2 (latest stable) |
 | 许可证 | 本部署方案：个人使用；PocketClaw：MIT License |
 
-### 17.1 v1.1.2 更新内容
+### 17.1 v1.2.2 更新内容
+
+- [x] 修复 Windows 版本检查失败（缺少 TLS 1.2 设置导致 HTTPS 请求被拒）
+- [x] 修复 Docker 等待计时器缺少 sleep 导致假超时
+- [x] 移除桌面端语音按钮（voice-chat.js 不再注入 control-ui）
+- [x] 手机页面 WebSocket 连接修复（等待 connect.challenge 再认证）
+
+### 17.2 v1.2.1 更新内容
+
+- [x] OpenClaw 升级至 2026.3.2（新增 PDF 工具、Telegram 流式预览、日志本地时间等）
+- [x] 修复 tools.profile 默认值变更导致新安装工具集缺失的问题
+- [x] 版本检查 API 迁移至腾讯 COS（解决 ICP 备案期间域名不可用）
+- [x] 修复启动菜单 Gateway Token 不匹配问题（macOS/Windows）
+- [x] 修复 QR 码生成失败问题（改用容器内 Python 生成）
+- [x] 修复备用启动路径未传递 GATEWAY_AUTH_PASSWORD 的问题
+
+### 17.3 v1.1.2 更新内容
 
 - [x] 手机访问修复：自动添加 Windows 防火墙规则放行 18789 端口
 - [x] 浏览器配置修复：noSandbox=true + defaultProfile=openclaw，解决 Docker 内 Chromium 无法启动

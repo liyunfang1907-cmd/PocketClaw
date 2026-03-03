@@ -53,6 +53,7 @@ wait_for_docker() {
             exit 1
         fi
         echo "       已等待 ${elapsed} 秒..."
+        sleep 5
     done
 }
 
@@ -111,15 +112,21 @@ if ! command -v docker &>/dev/null; then
 fi
 
 if ! docker_is_ready; then
-    echo "[信息] Docker 未运行，正在自动启动 Docker Desktop..."
-    # 先杀掉可能残留的僵死 Docker 进程，确保干净启动
-    if [[ "$(uname)" == "Darwin" ]]; then
-        killall "com.docker.backend" "com.docker.virtualization" 2>/dev/null || true
-        sleep 1
+    if command -v colima &>/dev/null; then
+        echo "[信息] Docker 未运行，正在自动启动 Colima..."
+        colima start 2>/dev/null || true
+        wait_for_docker 120 ""
+        echo "[OK] Colima 已自动启动"
+    else
+        echo "[信息] Docker 未运行，正在自动启动 Docker Desktop..."
+        if [[ "$(uname)" == "Darwin" ]]; then
+            killall "com.docker.backend" "com.docker.virtualization" 2>/dev/null || true
+            sleep 1
+        fi
+        open -a "Docker" 2>/dev/null || true
+        wait_for_docker 120 "Desktop "
+        echo "[OK] Docker Desktop 已自动启动"
     fi
-    open -a "Docker" 2>/dev/null || true
-    wait_for_docker 120 "Desktop "
-    echo "[OK] Docker Desktop 已自动启动"
 fi
 
 echo "[OK] Docker 已就绪"
@@ -226,9 +233,17 @@ if [ -f "$PROJECT_DIR/.env" ]; then
 fi
 
 # ── 检查/配置 Docker 镜像加速器 ──
+# Colima 用户: 镜像加速器通过 ~/.colima/default/colima.yaml 配置，此处跳过
+USING_COLIMA=0
+if command -v colima &>/dev/null && colima status 2>/dev/null | grep -qi "running"; then
+    USING_COLIMA=1
+fi
+
 DAEMON_JSON="$HOME/.docker/daemon.json"
 MIRRORS_OK=0
-if [ -f "$DAEMON_JSON" ]; then
+if [ "$USING_COLIMA" -eq 1 ]; then
+    MIRRORS_OK=1  # Colima 用户跳过镜像加速器检查
+elif [ -f "$DAEMON_JSON" ]; then
     if python3 -c "import json; cfg=json.load(open('$DAEMON_JSON')); exit(0 if cfg.get('registry-mirrors') else 1)" 2>/dev/null; then
         MIRRORS_OK=1
     fi
@@ -256,31 +271,35 @@ json.dump(cfg, open('$DAEMON_JSON','w'), indent=2)
             echo '{"registry-mirrors":["https://docker.1ms.run","https://docker.xuanyuan.me"]}' > "$DAEMON_JSON"
         fi
         echo "[OK] 镜像加速器已配置"
-        echo "[信息] 正在重启 Docker Desktop 以应用配置..."
-        osascript -e 'quit app "Docker"' 2>/dev/null || true
-        # 等待 Docker 完全退出后再重新启动
-        QUIT_WAIT=0
-        while docker info &>/dev/null 2>&1; do
+        # 仅 Docker Desktop 需要重启
+        if [ "$USING_COLIMA" -eq 0 ] && open -a "Docker" 2>/dev/null; then
+            echo "[信息] 正在重启 Docker Desktop 以应用配置..."
+            osascript -e 'quit app "Docker"' 2>/dev/null || true
+            QUIT_WAIT=0
+            while docker info &>/dev/null 2>&1; do
+                sleep 2
+                QUIT_WAIT=$((QUIT_WAIT + 2))
+                if [ "$QUIT_WAIT" -ge 30 ]; then
+                    break
+                fi
+            done
             sleep 2
-            QUIT_WAIT=$((QUIT_WAIT + 2))
-            if [ "$QUIT_WAIT" -ge 30 ]; then
-                break
-            fi
-        done
-        sleep 2
-        open -a "Docker"
-        echo "       等待 Docker 引擎就绪（最多等待 120 秒）..."
-        WAIT_COUNT2=0
-        while ! docker info &>/dev/null; do
-            sleep 5
-            WAIT_COUNT2=$((WAIT_COUNT2 + 5))
-            if [ "$WAIT_COUNT2" -ge 120 ]; then
-                echo "[错误] Docker Desktop 重启超时！请手动重启后重试。"
-                exit 1
-            fi
-            echo "       已等待 ${WAIT_COUNT2} 秒..."
-        done
-        echo "[OK] Docker 已重启，镜像加速器已生效"
+            open -a "Docker"
+            echo "       等待 Docker 引擎就绪（最多等待 120 秒）..."
+            WAIT_COUNT2=0
+            while ! docker info &>/dev/null; do
+                sleep 5
+                WAIT_COUNT2=$((WAIT_COUNT2 + 5))
+                if [ "$WAIT_COUNT2" -ge 120 ]; then
+                    echo "[错误] Docker Desktop 重启超时！请手动重启后重试。"
+                    exit 1
+                fi
+                echo "       已等待 ${WAIT_COUNT2} 秒..."
+            done
+            echo "[OK] Docker 已重启，镜像加速器已生效"
+        else
+            echo "[信息] 镜像加速器配置已写入，将在下次 Docker 启动时生效"
+        fi
     else
         echo "[OK] Docker Hub 连接正常"
     fi
@@ -306,36 +325,178 @@ if [[ "$(uname)" == "Darwin" ]]; then
 fi
 
 # ── 启动 ──
-echo ""
-echo "┌──────────────────────────────────────────┐"
-echo "│  首次构建大约需要 2-5 分钟               │"
-echo "│  请耐心等待，不要关闭此窗口              │"
-echo "│                                          │"
-echo "│  构建日志: data/logs/build.log            │"
-echo "└──────────────────────────────────────────┘"
-echo ""
-echo "[..] 构建中，请稍候..."
-
+cd "$PROJECT_DIR"
 mkdir -p "$PROJECT_DIR/data/logs"
 BUILD_LOG="$PROJECT_DIR/data/logs/build.log"
+> "$BUILD_LOG"
 
-# ── 第一步：构建镜像（与容器无关，不会被幽灵容器干扰）──
-run_compose -f "$PROJECT_DIR/docker-compose.yml" build > "$BUILD_LOG" 2>&1
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "[错误] 镜像构建失败！"
-    echo "  构建日志: $BUILD_LOG"
-    echo "  可能原因:"
-    echo "  1. Docker Hub 无法访问 → 请配置镜像加速器"
-    echo "  2. 磁盘空间不足 → docker system prune"
-    exit 1
+# ── 版本更新检查（在构建前执行，更新后重新构建新版本）──
+POCKETCLAW_VERSION=$(cat "$PROJECT_DIR/VERSION" 2>/dev/null || echo "unknown")
+echo "[信息] 正在检查更新..."
+VERSION_API="https://pocketclaw-1380766547.cos.ap-beijing.myqcloud.com/version.json"
+LATEST_VER=""
+DOWNLOAD_URL=""
+if command -v curl &>/dev/null; then
+    VERSION_JSON=$(curl -sf --connect-timeout 5 "$VERSION_API" 2>/dev/null || true)
+    if [ -n "$VERSION_JSON" ]; then
+        LATEST_VER=$(echo "$VERSION_JSON" | grep -o '"latest"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+        DOWNLOAD_URL=$(echo "$VERSION_JSON" | grep -o '"download_url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+    fi
 fi
-echo "[OK] 镜像构建完成"
+
+if [ -z "$LATEST_VER" ]; then
+    echo "[信息] 无法获取版本信息（网络问题），跳过检查"
+elif [ "$LATEST_VER" = "$POCKETCLAW_VERSION" ]; then
+    echo "[OK] 当前已是最新版本 v${POCKETCLAW_VERSION}"
+else
+    echo ""
+    echo "============================================"
+    echo "  [更新] 发现新版本 v${LATEST_VER}"
+    echo "         当前版本 v${POCKETCLAW_VERSION}"
+    echo "============================================"
+    echo ""
+    echo "  （更新不会影响您的私有数据和配置）"
+    printf "  是否一键更新？(y/N): "
+    read -r UPDATE_CHOICE
+    if [ "$UPDATE_CHOICE" = "y" ] || [ "$UPDATE_CHOICE" = "Y" ]; then
+        echo ""
+        echo "[更新] 正在下载更新包..."
+        UPDATE_ZIP="/tmp/PocketClaw-update.zip"
+        UPDATE_DIR="/tmp/PocketClaw-update"
+        if curl -sfL --connect-timeout 30 "$DOWNLOAD_URL" -o "$UPDATE_ZIP" 2>/dev/null; then
+            echo "[更新] 下载完成，正在解压..."
+            rm -rf "$UPDATE_DIR"
+            unzip -qo "$UPDATE_ZIP" -d "$UPDATE_DIR" 2>/dev/null || {
+                python3 -c "import zipfile; zipfile.ZipFile('$UPDATE_ZIP').extractall('$UPDATE_DIR')" 2>/dev/null
+            }
+            PAYLOAD=""
+            if [ -d "$UPDATE_DIR/PocketClaw" ]; then
+                PAYLOAD="$UPDATE_DIR/PocketClaw"
+            else
+                for d in "$UPDATE_DIR"/*/; do
+                    [ -f "${d}VERSION" ] && PAYLOAD="$d" && break
+                done
+            fi
+            if [ -z "$PAYLOAD" ]; then
+                echo "[错误] 更新包格式异常，请手动更新"
+            else
+                echo "[更新] 正在安装更新..."
+                # 复制根目录文件（不覆盖 .env）
+                for f in "$PAYLOAD"/*; do
+                    [ -f "$f" ] && bn=$(basename "$f") && [ "$bn" != ".env" ] && cp -f "$f" "$PROJECT_DIR/" 2>/dev/null
+                done
+                # 复制 scripts/
+                [ -d "$PAYLOAD/scripts" ] && cp -rf "$PAYLOAD/scripts/"* "$PROJECT_DIR/scripts/" 2>/dev/null
+                # 复制 config/ 下的所有文件（mobile.html, voice-chat.js 等）
+                [ -d "$PAYLOAD/config" ] && {
+                    for cf in "$PAYLOAD/config"/*; do
+                        if [ -f "$cf" ]; then
+                            cp -f "$cf" "$PROJECT_DIR/config/" 2>/dev/null
+                        fi
+                    done
+                }
+                # 复制 config/workspace/ 下的 .md 文件
+                [ -d "$PAYLOAD/config/workspace" ] && {
+                    for wf in "$PAYLOAD/config/workspace"/*.md; do
+                        [ -f "$wf" ] && cp -f "$wf" "$PROJECT_DIR/config/workspace/" 2>/dev/null
+                    done
+                }
+                # 复制 config/workspace/skills/
+                [ -d "$PAYLOAD/config/workspace/skills" ] && cp -rf "$PAYLOAD/config/workspace/skills/"* "$PROJECT_DIR/config/workspace/skills/" 2>/dev/null
+                NEW_VER=$(cat "$PAYLOAD/VERSION" 2>/dev/null || echo "?")
+                POCKETCLAW_VERSION="$NEW_VER"
+                # 清除构建哈希，强制重新构建新版本的镜像
+                rm -f "$PROJECT_DIR/data/.build_hash"
+                echo ""
+                echo "============================================"
+                echo "  [OK] 更新完成! v${POCKETCLAW_VERSION}"
+                echo "       正在继续启动新版本..."
+                echo "============================================"
+                echo ""
+            fi
+            rm -rf "$UPDATE_DIR" "$UPDATE_ZIP"
+        else
+            echo "[错误] 下载失败，请检查网络或手动访问 pocketclaw.cn 下载"
+        fi
+    else
+        echo "  [信息] 已跳过更新，可随时访问 pocketclaw.cn 下载"
+    fi
+    echo ""
+fi
+
+# ── 第一步：智能构建镜像 ──
+# 计算关键文件指纹：仅当 Dockerfile/entrypoint/config 变化时才重新构建
+BUILD_HASH_FILE="$PROJECT_DIR/data/.build_hash"
+CURRENT_HASH=""
+if command -v md5sum &>/dev/null; then
+    CURRENT_HASH=$(cat "$PROJECT_DIR/Dockerfile.custom" "$PROJECT_DIR/scripts/entrypoint.sh" "$PROJECT_DIR/config/mobile.html" "$PROJECT_DIR/config/voice-chat.js" "$PROJECT_DIR/config/openclaw.json" "$PROJECT_DIR/VERSION" 2>/dev/null | md5sum | awk '{print $1}')
+elif command -v md5 &>/dev/null; then
+    CURRENT_HASH=$(cat "$PROJECT_DIR/Dockerfile.custom" "$PROJECT_DIR/scripts/entrypoint.sh" "$PROJECT_DIR/config/mobile.html" "$PROJECT_DIR/config/voice-chat.js" "$PROJECT_DIR/config/openclaw.json" "$PROJECT_DIR/VERSION" 2>/dev/null | md5)
+fi
+
+PREV_HASH=""
+[ -f "$BUILD_HASH_FILE" ] && PREV_HASH=$(cat "$BUILD_HASH_FILE" 2>/dev/null)
+
+NEED_BUILD=1
+if [ -n "$CURRENT_HASH" ] && [ "$CURRENT_HASH" = "$PREV_HASH" ]; then
+    # 指纹一致，检查镜像是否存在
+    if docker image inspect pocketclaw-pocketclaw:latest &>/dev/null; then
+        NEED_BUILD=0
+        echo "[OK] 镜像未变化，跳过构建（秒级启动）"
+    fi
+fi
+
+if [ "$NEED_BUILD" -eq 1 ]; then
+    echo ""
+    echo "┌──────────────────────────────────────────┐"
+    echo "│  正在构建容器镜像...                     │"
+    echo "│  首次构建约 3-5 分钟，后续有缓存会更快   │"
+    echo "└──────────────────────────────────────────┘"
+    echo ""
+
+    run_compose build --progress=plain >> "$BUILD_LOG" 2>&1 &
+    BUILD_PID=$!
+
+    SPINNER='|/-\'
+    SPIN_IDX=0
+    BUILD_START=$(date +%s)
+    while kill -0 "$BUILD_PID" 2>/dev/null; do
+        NOW=$(date +%s)
+        ELAPSED=$(( NOW - BUILD_START ))
+        MINS=$(( ELAPSED / 60 ))
+        SECS=$(( ELAPSED % 60 ))
+        STEP=$(grep -oE '\[[[:space:]]*[0-9]+/[0-9]+\][[:space:]]+[A-Z]+[^"]*' "$BUILD_LOG" 2>/dev/null | tail -1 | head -c 50 || true)
+        SPIN_CHAR="${SPINNER:SPIN_IDX%4:1}"
+        printf "\r  %s [%02d:%02d] %s          " "$SPIN_CHAR" "$MINS" "$SECS" "${STEP:-正在准备...}"
+        SPIN_IDX=$((SPIN_IDX + 1))
+        sleep 0.5
+    done
+    wait "$BUILD_PID"
+    BUILD_EXIT=$?
+    printf "\r%-80s\r" " "
+
+    NOW=$(date +%s)
+    BUILD_TOTAL=$(( NOW - BUILD_START ))
+
+    if [ "$BUILD_EXIT" -ne 0 ]; then
+        echo ""
+        echo "[错误] 镜像构建失败！（耗时 $((BUILD_TOTAL/60))分$((BUILD_TOTAL%60))秒）"
+        echo "  构建日志: $BUILD_LOG"
+        echo "  可能原因:"
+        echo "  1. Docker Hub 无法访问 → 请配置镜像加速器"
+        echo "  2. 磁盘空间不足 → docker system prune"
+        exit 1
+    fi
+    echo "[OK] 镜像构建完成（耗时 $((BUILD_TOTAL/60))分$((BUILD_TOTAL%60))秒）"
+
+    # 保存构建指纹
+    [ -n "$CURRENT_HASH" ] && echo "$CURRENT_HASH" > "$BUILD_HASH_FILE"
+fi
 
 # ── 第二步：启动容器 ──
 # 彻底清理所有 pocketclaw 相关容器（包括幽灵容器）和网络
 echo "[..] 清理旧容器..."
-run_compose -f "$PROJECT_DIR/docker-compose.yml" down --remove-orphans >> "$BUILD_LOG" 2>&1 || true
+run_compose down --remove-orphans >> "$BUILD_LOG" 2>&1 || true
 # 清理所有名称含 pocketclaw 的容器（包括 <hash>_pocketclaw 等幽灵容器）
 for cid in $(docker ps -aq --filter "name=pocketclaw" 2>/dev/null); do
     docker rm -f "$cid" >> "$BUILD_LOG" 2>&1 || true
@@ -348,8 +509,28 @@ done
 docker network rm pocketclaw_pocketclaw-net >> "$BUILD_LOG" 2>&1 || true
 docker network rm pocketclaw_default >> "$BUILD_LOG" 2>&1 || true
 
+# ── 生成随机 Gateway Token（每次启动不同，防止局域网未授权访问）──
+if [ -z "${GATEWAY_AUTH_PASSWORD:-}" ]; then
+    GATEWAY_AUTH_PASSWORD=$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 8 || true)
+    # 若 urandom 失败，使用时间戳+进程号
+    if [ -z "$GATEWAY_AUTH_PASSWORD" ]; then
+        GATEWAY_AUTH_PASSWORD="pc$(date +%s | tail -c 7)$$"
+    fi
+fi
+export GATEWAY_AUTH_PASSWORD
+
+# 停止 Mac 原生 OpenClaw gateway (与 Docker 端口冲突)
+if [ "$(uname)" = "Darwin" ]; then
+    PLIST="$HOME/Library/LaunchAgents/ai.openclaw.gateway.plist"
+    if [ -f "$PLIST" ] && launchctl list 2>/dev/null | grep -q "ai.openclaw.gateway"; then
+        echo "[信息] 正在停止原生 OpenClaw gateway (端口冲突)..."
+        launchctl unload "$PLIST" 2>/dev/null || true
+        sleep 1
+    fi
+fi
+
 # 尝试 docker compose up
-run_compose -f "$PROJECT_DIR/docker-compose.yml" up -d >> "$BUILD_LOG" 2>&1 || true
+run_compose up -d >> "$BUILD_LOG" 2>&1 || true
 
 # 等待几秒让容器启动
 sleep 3
@@ -380,6 +561,7 @@ else
         -v "$PROJECT_DIR/data/logs:/home/node/.openclaw/logs" \
         -v "$PROJECT_DIR/data/skills:/home/node/.openclaw/skills" \
         --env-file "$PROJECT_DIR/.env" \
+        -e "GATEWAY_AUTH_PASSWORD=$GATEWAY_AUTH_PASSWORD" \
         "$IMAGE_NAME" >> "$BUILD_LOG" 2>&1
 
     sleep 3
@@ -402,6 +584,9 @@ echo "[OK] 构建完成！"
 GATEWAY_TOKEN="${GATEWAY_AUTH_PASSWORD:-pocketclaw}"
 DASHBOARD_URL="http://127.0.0.1:18789/#token=${GATEWAY_TOKEN}"
 
+# ── 保存 Token 到 workspace（AI 可读取，用于生成手机访问地址）──
+echo "$GATEWAY_TOKEN" > "$PROJECT_DIR/config/workspace/.gateway_token"
+
 # ── 检测局域网 IP（用于手机访问）──
 LAN_IP=""
 if command -v ifconfig &>/dev/null; then
@@ -415,6 +600,7 @@ if [ -n "$LAN_IP" ]; then
     echo "$LAN_IP" > "$PROJECT_DIR/config/workspace/.host_ip"
 fi
 
+# 重新读取版本号（可能已被更新）
 POCKETCLAW_VERSION=$(cat "$PROJECT_DIR/VERSION" 2>/dev/null || echo "unknown")
 
 echo ""
@@ -424,88 +610,31 @@ echo "============================================"
 echo ""
 echo "  打开界面: $DASHBOARD_URL"
 if [ -n "$LAN_IP" ]; then
-echo "  手机访问: http://${LAN_IP}:18789/__openclaw__/canvas/app.html"
+MOBILE_URL="http://${LAN_IP}:18789/mobile.html#token=${GATEWAY_TOKEN}"
+echo "  手机访问: $MOBILE_URL"
 echo ""
-echo "  [提示] 手机打开后可"添加到主屏幕"当 APP 使用"
+echo "  [扫码手机访问]"
+echo ""
+# 生成终端 QR 码（优先用容器内 python3，容器已预装 qrcode 模块）
+if docker exec pocketclaw python3 -c "import qrcode,sys;qr=qrcode.QRCode(border=1,error_correction=qrcode.constants.ERROR_CORRECT_L);qr.add_data(sys.argv[1]);qr.print_ascii()" "$MOBILE_URL" 2>/dev/null; then
+    true
+elif command -v python3 &>/dev/null; then
+    python3 -c "
+try:
+    import qrcode
+except ImportError:
+    import subprocess, sys
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', '--break-system-packages', 'qrcode'],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    import qrcode
+qr = qrcode.QRCode(border=1, error_correction=qrcode.constants.ERROR_CORRECT_L)
+qr.add_data('$MOBILE_URL')
+qr.print_ascii()
+" 2>/dev/null || true
+fi
+echo ""
 fi
 
-
-# ── 版本更新检查 ──
-echo "[信息] 正在检查更新..."
-VERSION_API="http://82.156.244.48/version.json"
-LATEST_VER=""
-DOWNLOAD_URL=""
-if command -v curl &>/dev/null; then
-    VERSION_JSON=$(curl -sf --connect-timeout 5 "$VERSION_API" 2>/dev/null)
-    if [ -n "$VERSION_JSON" ]; then
-        LATEST_VER=$(echo "$VERSION_JSON" | grep -o '"latest"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
-        DOWNLOAD_URL=$(echo "$VERSION_JSON" | grep -o '"download_url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
-    fi
-fi
-
-if [ -z "$LATEST_VER" ]; then
-    echo "[信息] 无法获取版本信息（网络问题），跳过检查"
-elif [ "$LATEST_VER" = "$POCKETCLAW_VERSION" ]; then
-    echo "[OK] 当前已是最新版本 v${POCKETCLAW_VERSION}"
-else
-    echo ""
-    echo "============================================"
-    echo "  [更新] 发现新版本 v${LATEST_VER}"
-    echo "         当前版本 v${POCKETCLAW_VERSION}"
-    echo "============================================"
-    echo ""
-    echo "  （更新不会影响您的私有数据和配置）"
-    printf "  是否一键更新？(y/N): "
-    read -r UPDATE_CHOICE
-    if [ "$UPDATE_CHOICE" = "y" ] || [ "$UPDATE_CHOICE" = "Y" ]; then
-        echo ""
-        echo "[更新] 正在下载更新包..."
-        UPDATE_ZIP="/tmp/PocketClaw-update.zip"
-        UPDATE_DIR="/tmp/PocketClaw-update"
-        if curl -sfL --connect-timeout 30 "$DOWNLOAD_URL" -o "$UPDATE_ZIP" 2>/dev/null; then
-            echo "[更新] 下载完成，正在解压..."
-            rm -rf "$UPDATE_DIR"
-            unzip -qo "$UPDATE_ZIP" -d "$UPDATE_DIR" 2>/dev/null || {
-                # macOS 没有 unzip 时用 python
-                python3 -c "import zipfile; zipfile.ZipFile('"$UPDATE_ZIP"').extractall('"$UPDATE_DIR"')" 2>/dev/null
-            }
-            # 查找解压目录
-            PAYLOAD=""
-            if [ -d "$UPDATE_DIR/PocketClaw" ]; then
-                PAYLOAD="$UPDATE_DIR/PocketClaw"
-            else
-                for d in "$UPDATE_DIR"/*/; do
-                    [ -f "${d}VERSION" ] && PAYLOAD="$d" && break
-                done
-            fi
-            if [ -z "$PAYLOAD" ]; then
-                echo "[错误] 更新包格式异常，请手动更新"
-            else
-                echo "[更新] 正在安装更新..."
-                # 复制文件（不覆盖 secrets/data/.env）
-                for f in "$PAYLOAD"/*; do
-                    [ -f "$f" ] && bn=$(basename "$f") && [ "$bn" != ".env" ] && cp -f "$f" "$PROJECT_DIR/" 2>/dev/null
-                done
-                [ -d "$PAYLOAD/scripts" ] && cp -rf "$PAYLOAD/scripts/"* "$PROJECT_DIR/scripts/" 2>/dev/null
-                [ -f "$PAYLOAD/config/openclaw.json" ] && cp -f "$PAYLOAD/config/openclaw.json" "$PROJECT_DIR/config/" 2>/dev/null
-                [ -f "$PAYLOAD/config/workspace/AGENTS.md" ] && cp -f "$PAYLOAD/config/workspace/AGENTS.md" "$PROJECT_DIR/config/workspace/" 2>/dev/null
-                NEW_VER=$(cat "$PAYLOAD/VERSION" 2>/dev/null || echo "?")
-                echo ""
-                echo "============================================"
-                echo "  [OK] 更新完成! v${POCKETCLAW_VERSION} → v${NEW_VER}"
-                echo "============================================"
-                echo "  更新将在下次启动时生效"
-                echo ""
-            fi
-            rm -rf "$UPDATE_DIR" "$UPDATE_ZIP"
-        else
-            echo "[错误] 下载失败，请检查网络或手动访问 pocketclaw.cn 下载"
-        fi
-    else
-        echo "  [信息] 已跳过更新，可随时访问 pocketclaw.cn 下载"
-    fi
-    echo ""
-fi
 
 # ── 清理明文 ──
 if [ -f "$ENC_FILE" ]; then

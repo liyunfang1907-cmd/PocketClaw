@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#075E54">
+<title>PocketClaw</title>
+<style>
+/* ── CSS 变量 / 主题 ── */
+:root {
+  --bg: #ECE5DD;
+  --header-bg: #075E54;
+  --header-text: #fff;
+  --user-bubble: #DCF8C6;
+  --ai-bubble: #fff;
+  --text-color: #303030;
+  --text-secondary: #667781;
+  --input-bg: #fff;
+  --input-border: #ccc;
+  --send-btn: #075E54;
+  --send-btn-active: #128C7E;
+  --danger: #e74c3c;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --radius: 18px;
+}
+
+/* ── 全局重置 ── */
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  color: var(--text-color);
+  background: var(--bg);
+  overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+/* ── 页面布局：header + messages + input ── */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  height: 100dvh;
+}
+
+/* ── 顶部导航栏 ── */
+#header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  padding-top: calc(10px + var(--safe-top));
+  background: var(--header-bg);
+  color: var(--header-text);
+  z-index: 10;
+}
+#header .title {
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#header .status {
+  font-size: 12px;
+  opacity: 0.8;
+}
+#header .status.connected { color: #25D366; opacity: 1; }
+#header .status.error { color: #ff6b6b; opacity: 1; }
+
+/* 模式切换按钮 */
+#mode-toggle {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: #fff;
+  font-size: 22px;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+#mode-toggle:active { background: rgba(255,255,255,0.4); }
+
+/* ── 消息区域 ── */
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 10px;
+  padding-bottom: 8px;
+  scroll-behavior: smooth;
+}
+
+/* 消息容器 */
+.msg {
+  display: flex;
+  margin-bottom: 6px;
+  max-width: 85%;
+  animation: fadeIn 0.2s ease;
+}
+.msg.user { margin-left: auto; flex-direction: row-reverse; }
+.msg.ai { margin-right: auto; }
+
+/* 气泡 */
+.bubble {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  line-height: 1.5;
+  word-break: break-word;
+  white-space: pre-wrap;
+  font-size: 15px;
+  position: relative;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.08);
+}
+.msg.user .bubble {
+  background: var(--user-bubble);
+  border-top-right-radius: 4px;
+}
+.msg.ai .bubble {
+  background: var(--ai-bubble);
+  border-top-left-radius: 4px;
+}
+
+/* 气泡内 Markdown */
+.bubble p { margin: 0 0 6px; }
+.bubble p:last-child { margin-bottom: 0; }
+.bubble code {
+  background: rgba(0,0,0,0.06);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: Menlo, Consolas, monospace;
+}
+.bubble pre {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 10px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 13px;
+  margin: 6px 0;
+  line-height: 1.4;
+}
+.bubble pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+.bubble a { color: #128C7E; text-decoration: underline; }
+.bubble ul, .bubble ol { padding-left: 20px; margin: 4px 0; }
+.bubble strong { font-weight: 600; }
+.bubble em { font-style: italic; }
+.bubble blockquote {
+  border-left: 3px solid #128C7E;
+  padding-left: 10px;
+  margin: 6px 0;
+  color: var(--text-secondary);
+}
+
+/* 时间戳 */
+.msg-time {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  padding: 0 6px;
+  align-self: flex-end;
+}
+
+/* 系统消息 */
+.sys-msg {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: rgba(0,0,0,0.04);
+  padding: 4px 14px;
+  border-radius: 12px;
+  margin: 8px auto;
+  max-width: 80%;
+}
+
+/* 工具调用提示 */
+.tool-msg {
+  text-align: center;
+  font-size: 12px;
+  color: #128C7E;
+  background: rgba(18,140,126,0.08);
+  padding: 4px 14px;
+  border-radius: 12px;
+  margin: 4px auto;
+  max-width: 90%;
+}
+
+/* 思考中动画 */
+.typing-indicator {
+  display: inline-flex;
+  gap: 4px;
+  padding: 10px 16px;
+}
+.typing-indicator span {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #999;
+  animation: blink 1.4s infinite both;
+}
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes blink {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── 输入区域 ── */
+#input-area {
+  flex-shrink: 0;
+  padding: 8px 10px;
+  padding-bottom: calc(8px + var(--safe-bottom));
+  background: #F0F0F0;
+  border-top: 1px solid #ddd;
+}
+
+/* 输入行 */
+.input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* 文本输入 */
+#msg-input {
+  flex: 1;
+  border: 1px solid var(--input-border);
+  border-radius: 22px;
+  padding: 10px 16px;
+  font-size: 16px;
+  line-height: 1.4;
+  resize: none;
+  outline: none;
+  background: var(--input-bg);
+  max-height: 120px;
+  font-family: inherit;
+  -webkit-appearance: none;
+}
+#msg-input:focus { border-color: var(--send-btn); }
+
+/* 发送按钮 */
+#send-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--send-btn);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, opacity 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+#send-btn:disabled { opacity: 0.4; cursor: default; }
+#send-btn:not(:disabled):active { background: var(--send-btn-active); }
+
+/* 语音输入行 */
+#voice-input-row {
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+/* 麦克风按钮 */
+#mic-btn {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--send-btn);
+  background: #fff;
+  font-size: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+#mic-btn.listening {
+  background: var(--danger);
+  border-color: var(--danger);
+  animation: pulse 1.5s infinite;
+}
+#voice-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(231,76,60,0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(231,76,60,0); }
+}
+
+/* ── 工具提示 Toast ── */
+#toast {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  background: rgba(0,0,0,0.75);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+}
+#toast.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- 顶部栏 -->
+  <div id="header">
+    <div>
+      <div class="title">🤖 PocketClaw</div>
+      <div class="status" id="conn-status">连接中...</div>
+    </div>
+    <button id="mode-toggle" title="切换文字/语音">⌨️</button>
+  </div>
+
+  <!-- 消息列表 -->
+  <div id="messages"></div>
+
+  <!-- 输入区 -->
+  <div id="input-area">
+    <!-- 文本模式 -->
+    <div id="text-input-row" class="input-row">
+      <textarea id="msg-input" rows="1" placeholder="输入消息..." autocomplete="off"></textarea>
+      <button id="send-btn" disabled>➤</button>
+    </div>
+    <!-- 语音模式 -->
+    <div id="voice-input-row" class="input-row" style="display:none;">
+      <button id="mic-btn">🎤</button>
+      <span id="voice-hint">点击开始说话</span>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+/* ── PocketClaw Mobile Client ── */
+(function() {
+'use strict';
+
+// ── 全局状态 ──
+const STATE = {
+  ws: null,
+  connected: false,
+  token: '',
+  connectNonce: '',
+  connectSent: false,
+  connectTimer: null,
+  sessionKey: 'main',
+  chatRunId: null,
+  chatStream: '',
+  pending: new Map(),    // id -> {resolve, reject}
+  mode: 'text',          // 'text' | 'voice'
+  lastInputWasVoice: false,
+  ttsEnabled: true,
+  isListening: false,
+  recognition: null,
+  reconnectTimer: null,
+  backoffMs: 800,
+};
+
+// ── DOM 缓存 ──
+const $ = id => document.getElementById(id);
+const DOM = {};
+
+// ── 工具函数 ──
+function uuid() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
+function showToast(msg, ms) {
+  const t = DOM.toast;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), ms || 2000);
+}
+
+function setStatus(text, cls) {
+  DOM.status.textContent = text;
+  DOM.status.className = 'status' + (cls ? ' ' + cls : '');
+}
+
+function timeStr() {
+  const d = new Date();
+  return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+}
+
+// ── WebSocket 连接 ──
+function wsConnect() {
+  if (STATE.ws) { try { STATE.ws.close(); } catch(e){} }
+  clearTimeout(STATE.reconnectTimer);
+  clearTimeout(STATE.connectTimer);
+  STATE.connectSent = false;
+  STATE.connectNonce = null;
+
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = proto + '//' + location.host;
+  setStatus('连接中...', '');
+
+  const ws = new WebSocket(url);
+  STATE.ws = ws;
+
+  ws.onopen = () => {
+    STATE.backoffMs = 800;
+    // 等待 connect.challenge 事件再发送 connect（匹配官方 control-ui 行为）
+    // 设置 750ms 兜底定时器，若 challenge 未到则直接连接
+    STATE.connectTimer = setTimeout(() => {
+      if (!STATE.connectSent) sendConnect();
+    }, 750);
+  };
+
+  ws.onmessage = (evt) => {
+    let msg;
+    try { msg = JSON.parse(evt.data); } catch { return; }
+    handleMessage(msg);
+  };
+
+  ws.onclose = () => {
+    STATE.connected = false;
+    clearTimeout(STATE.connectTimer);
+    setStatus('已断开', 'error');
+    scheduleReconnect();
+  };
+
+  ws.onerror = () => {
+    STATE.connected = false;
+    setStatus('连接失败', 'error');
+  };
+}
+
+function scheduleReconnect() {
+  clearTimeout(STATE.reconnectTimer);
+  STATE.reconnectTimer = setTimeout(() => {
+    wsConnect();
+  }, STATE.backoffMs);
+  STATE.backoffMs = Math.min(STATE.backoffMs * 1.5, 15000);
+}
+
+function sendJSON(obj) {
+  if (STATE.ws && STATE.ws.readyState === WebSocket.OPEN) {
+    STATE.ws.send(JSON.stringify(obj));
+  }
+}
+
+// 发送 RPC 请求，返回 Promise
+function request(method, params) {
+  return new Promise((resolve, reject) => {
+    const id = uuid();
+    STATE.pending.set(id, { resolve, reject, method });
+    sendJSON({ type: 'req', id, method, params: params || {} });
+    // 超时 30s
+    setTimeout(() => {
+      if (STATE.pending.has(id)) {
+        STATE.pending.delete(id);
+        reject(new Error('Request timeout'));
+      }
+    }, 30000);
+  });
+}
+
+// 发送 connect 请求
+function sendConnect() {
+  if (STATE.connectSent) return;
+  STATE.connectSent = true;
+  clearTimeout(STATE.connectTimer);
+  const params = {
+    minProtocol: 3,
+    maxProtocol: 3,
+    client: {
+      id: 'pocketclaw-mobile',
+      version: '1.0',
+      platform: 'mobile-web',
+      mode: 'webchat'
+    },
+    role: 'operator',
+    scopes: ['operator.admin', 'operator.approvals', 'operator.pairing'],
+    caps: [],
+    auth: { token: STATE.token },
+    userAgent: navigator.userAgent,
+    locale: navigator.language || 'zh-CN'
+  };
+  if (STATE.connectNonce) {
+    params.nonce = STATE.connectNonce;
+  }
+  request('connect', params).then(res => {
+    STATE.connected = true;
+    setStatus('已连接', 'connected');
+  }).catch(err => {
+    setStatus('认证失败', 'error');
+    showToast('认证失败: ' + (err.message || err));
+  });
+}
+
+// ── 消息分发 ──
+function handleMessage(msg) {
+  // 响应
+  if (msg.type === 'res') {
+    const p = STATE.pending.get(msg.id);
+    if (p) {
+      STATE.pending.delete(msg.id);
+      if (msg.ok) p.resolve(msg.payload);
+      else p.reject(msg.error || { message: 'Unknown error' });
+    }
+    return;
+  }
+  // 事件
+  if (msg.type === 'event') {
+    handleEvent(msg);
+  }
+}
+
+function handleEvent(msg) {
+  const evt = msg.event;
+  const payload = msg.payload;
+
+  // connect.challenge → 收到 nonce 后发送 connect
+  if (evt === 'connect.challenge') {
+    const nonce = payload && payload.nonce;
+    if (nonce) {
+      STATE.connectNonce = nonce;
+      STATE.connectSent = false;   // 允许（重新）认证
+      clearTimeout(STATE.connectTimer);
+      sendConnect();
+    }
+    return;
+  }
+
+  // chat 事件（子步骤 4 实现处理逻辑）
+  if (evt === 'chat') {
+    handleChatEvent(payload);
+    return;
+  }
+
+  // exec.approval.requested → 自动批准（子步骤 5 实现）
+  if (evt === 'exec.approval.requested') {
+    handleApproval(payload);
+    return;
+  }
+}
+
+// 占位 - 子步骤 4 填充
+function handleChatEvent(payload) {
+  if (!payload || payload.sessionKey !== STATE.sessionKey) return;
+  const state = payload.state;
+  const msgData = payload.message;
+
+  if (state === 'delta') {
+    // delta 包含完整累积文本
+    const text = extractText(msgData);
+    if (typeof text === 'string') {
+      STATE.chatStream = text;
+      updateStreamBubble(text);
+    }
+  } else if (state === 'final') {
+    const text = extractText(msgData);
+    if (text !== null) {
+      finalizeAIMessage(text || STATE.chatStream || '');
+    }
+    STATE.chatStream = '';
+    STATE.chatRunId = null;
+    removeTypingIndicator();
+  } else if (state === 'aborted') {
+    const text = extractText(msgData) || STATE.chatStream || '';
+    if (text.trim()) finalizeAIMessage(text);
+    STATE.chatStream = '';
+    STATE.chatRunId = null;
+    removeTypingIndicator();
+  }
+}
+
+function handleApproval(payload) {
+  // 自动批准所有工具调用
+  if (!payload || !payload.id) return;
+  const desc = payload.description || payload.tool || '工具调用';
+  addToolMsg('🔧 ' + desc);
+  request('exec.approval.resolve', { id: payload.id, decision: 'approve' }).catch(() => {});
+}
+
+// ── 文本提取 ──
+function extractText(msg) {
+  if (!msg) return null;
+  const content = msg.content;
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    const parts = content.filter(p => p && p.type === 'text').map(p => p.text || '');
+    return parts.join('\n');
+  }
+  return null;
+}
+
+// ── Markdown 简易渲染 ──
+function renderMd(text) {
+  if (!text) return '';
+  let h = text
+    // 转义 HTML
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    // 代码块
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    // 行内代码
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // 粗体
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // 斜体
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // 链接
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    // 引用
+    .replace(/^&gt;\s?(.+)$/gm, '<blockquote>$1</blockquote>')
+    // 无序列表
+    .replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>')
+    // 有序列表
+    .replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+  // 包裹连续 li
+  h = h.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+  // 段落
+  h = h.replace(/\n{2,}/g, '</p><p>');
+  h = '<p>' + h + '</p>';
+  h = h.replace(/<p><\/p>/g, '');
+  // 单换行
+  h = h.replace(/([^>])\n([^<])/g, '$1<br>$2');
+  return h;
+}
+
+// ── 消息 DOM 操作 ──
+function scrollToBottom() {
+  const m = DOM.messages;
+  requestAnimationFrame(() => { m.scrollTop = m.scrollHeight; });
+}
+
+function addUserBubble(text) {
+  const div = document.createElement('div');
+  div.className = 'msg user';
+  div.innerHTML = '<div class="bubble">' + escapeHtml(text) + '</div><div class="msg-time">' + timeStr() + '</div>';
+  DOM.messages.appendChild(div);
+  scrollToBottom();
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function addTypingIndicator() {
+  removeTypingIndicator();
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.id = 'typing';
+  div.innerHTML = '<div class="bubble typing-indicator"><span></span><span></span><span></span></div>';
+  DOM.messages.appendChild(div);
+  scrollToBottom();
+}
+
+function removeTypingIndicator() {
+  const el = $('typing');
+  if (el) el.remove();
+}
+
+function updateStreamBubble(text) {
+  removeTypingIndicator();
+  let el = $('stream-bubble');
+  if (!el) {
+    const div = document.createElement('div');
+    div.className = 'msg ai';
+    div.id = 'stream-bubble';
+    div.innerHTML = '<div class="bubble"></div>';
+    DOM.messages.appendChild(div);
+    el = div;
+  }
+  el.querySelector('.bubble').innerHTML = renderMd(text);
+  scrollToBottom();
+}
+
+function finalizeAIMessage(text) {
+  removeTypingIndicator();
+  let el = $('stream-bubble');
+  if (el) {
+    el.id = '';
+    el.querySelector('.bubble').innerHTML = renderMd(text);
+    // 添加时间
+    const timeEl = document.createElement('div');
+    timeEl.className = 'msg-time';
+    timeEl.textContent = timeStr();
+    el.appendChild(timeEl);
+  } else {
+    const div = document.createElement('div');
+    div.className = 'msg ai';
+    div.innerHTML = '<div class="bubble">' + renderMd(text) + '</div><div class="msg-time">' + timeStr() + '</div>';
+    DOM.messages.appendChild(div);
+  }
+  scrollToBottom();
+
+  // 如果上次输入是语音，自动朗读
+  if (STATE.lastInputWasVoice && STATE.ttsEnabled) {
+    speakText(text);
+  }
+}
+
+function addSystemMsg(text) {
+  const div = document.createElement('div');
+  div.className = 'sys-msg';
+  div.textContent = text;
+  DOM.messages.appendChild(div);
+  scrollToBottom();
+}
+
+function addToolMsg(text) {
+  const div = document.createElement('div');
+  div.className = 'tool-msg';
+  div.textContent = text;
+  DOM.messages.appendChild(div);
+  scrollToBottom();
+}
+
+// ── 发送消息 ──
+function sendMessage(text) {
+  if (!text.trim() || !STATE.connected) return;
+  addUserBubble(text);
+  addTypingIndicator();
+
+  const idempKey = uuid();
+  STATE.chatRunId = idempKey;
+  STATE.chatStream = '';
+
+  request('chat.send', {
+    sessionKey: STATE.sessionKey,
+    message: text,
+    deliver: false,
+    idempotencyKey: idempKey
+  }).catch(err => {
+    removeTypingIndicator();
+    addSystemMsg('发送失败: ' + (err.message || err));
+  });
+}
+
+// TTS 语音合成
+function speakText(text) {
+  if (!window.speechSynthesis || !STATE.ttsEnabled) return;
+  // 去除 Markdown 标记
+  const plain = text
+    .replace(/```[\s\S]*?```/g, ' 代码块 ')
+    .replace(/`[^`]+`/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/^[>#*\-]\s*/gm, '')
+    .replace(/\n+/g, '。')
+    .trim();
+  if (!plain) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(plain);
+  utter.lang = 'zh-CN';
+  utter.rate = 1.1;
+  window.speechSynthesis.speak(utter);
+}
+
+// ── STT 语音识别 ──
+function initSTT() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return false;
+  const recognition = new SR();
+  recognition.lang = 'zh-CN';
+  recognition.continuous = false;
+  recognition.interimResults = true;
+
+  recognition.onresult = (e) => {
+    let final = '', interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) final += t;
+      else interim += t;
+    }
+    DOM.voiceHint.textContent = final || interim || '听不清，再试一次';
+    if (final) {
+      stopListening();
+      STATE.lastInputWasVoice = true;
+      sendMessage(final);
+    }
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error === 'not-allowed') {
+      showToast('麦克风权限被拒绝', 3000);
+    } else if (e.error !== 'aborted') {
+      DOM.voiceHint.textContent = '识别失败，请重试';
+    }
+    stopListening();
+  };
+
+  recognition.onend = () => {
+    if (STATE.isListening) stopListening();
+  };
+
+  STATE.recognition = recognition;
+  return true;
+}
+
+function startListening() {
+  if (!STATE.recognition) return;
+  STATE.isListening = true;
+  DOM.micBtn.classList.add('listening');
+  DOM.voiceHint.textContent = '正在听...';
+  try { STATE.recognition.start(); } catch(e) {}
+}
+
+function stopListening() {
+  STATE.isListening = false;
+  DOM.micBtn.classList.remove('listening');
+  DOM.voiceHint.textContent = '点击开始说话';
+  try { STATE.recognition.stop(); } catch(e) {}
+}
+
+// ── 模式切换 ──
+function setMode(mode) {
+  STATE.mode = mode;
+  if (mode === 'text') {
+    DOM.textRow.style.display = 'flex';
+    DOM.voiceRow.style.display = 'none';
+    DOM.modeToggle.textContent = '🎤';
+    DOM.modeToggle.title = '切换语音';
+  } else {
+    DOM.textRow.style.display = 'none';
+    DOM.voiceRow.style.display = 'flex';
+    DOM.modeToggle.textContent = '⌨️';
+    DOM.modeToggle.title = '切换文字';
+  }
+}
+
+// ── 初始化 ──
+function init() {
+  // 缓存 DOM
+  DOM.messages = $('messages');
+  DOM.status = $('conn-status');
+  DOM.toast = $('toast');
+  DOM.msgInput = $('msg-input');
+  DOM.sendBtn = $('send-btn');
+  DOM.modeToggle = $('mode-toggle');
+  DOM.textRow = $('text-input-row');
+  DOM.voiceRow = $('voice-input-row');
+  DOM.micBtn = $('mic-btn');
+  DOM.voiceHint = $('voice-hint');
+
+  // 从 URL hash 读取 token
+  const hash = location.hash.replace('#', '');
+  const params = new URLSearchParams(hash.includes('=') ? hash.replace(/^token=/, 'token=') : '');
+  STATE.token = params.get('token') || hash || '';
+  if (!STATE.token) {
+    setStatus('缺少 Token', 'error');
+    showToast('URL 中缺少 token 参数', 3000);
+    return;
+  }
+
+  // 连接
+  wsConnect();
+
+  // ── 文本输入事件 ──
+  DOM.msgInput.addEventListener('input', () => {
+    // 自动调整高度
+    DOM.msgInput.style.height = 'auto';
+    DOM.msgInput.style.height = Math.min(DOM.msgInput.scrollHeight, 120) + 'px';
+    // 启用/禁用发送按钮
+    DOM.sendBtn.disabled = !DOM.msgInput.value.trim();
+  });
+
+  DOM.sendBtn.addEventListener('click', () => {
+    const text = DOM.msgInput.value.trim();
+    if (!text) return;
+    STATE.lastInputWasVoice = false;
+    sendMessage(text);
+    DOM.msgInput.value = '';
+    DOM.msgInput.style.height = 'auto';
+    DOM.sendBtn.disabled = true;
+  });
+
+  // 回车发送（Shift+Enter 换行）
+  DOM.msgInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      DOM.sendBtn.click();
+    }
+  });
+
+  // ── 模式切换按钮 ──
+  const hasSTT = initSTT();
+  DOM.modeToggle.addEventListener('click', () => {
+    if (STATE.mode === 'text') {
+      if (!hasSTT) {
+        showToast('此浏览器不支持语音识别', 2000);
+        return;
+      }
+      setMode('voice');
+    } else {
+      if (STATE.isListening) stopListening();
+      setMode('text');
+    }
+  });
+  // 初始显示模式按钮图标
+  DOM.modeToggle.textContent = '🎤';
+  DOM.modeToggle.title = '切换语音';
+
+  // ── 麦克风按钮 ──
+  DOM.micBtn.addEventListener('click', () => {
+    if (STATE.isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  });
+
+  // 如果不支持 STT，隐藏模式切换按钮
+  if (!hasSTT && !window.speechSynthesis) {
+    DOM.modeToggle.style.display = 'none';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+// 暴露给后续子步骤
+window._PC = STATE;
+window._DOM = DOM;
+window._showToast = showToast;
+window._request = request;
+window._sendJSON = sendJSON;
+window._uuid = uuid;
+window._timeStr = timeStr;
+
+})();
+</body>
+</html>

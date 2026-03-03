@@ -50,8 +50,18 @@ show_status() {
     local status
     status=$(docker ps --filter "name=pocketclaw" --format "{{.Status}}" 2>/dev/null)
     if [ -n "$status" ]; then
-        echo -e "  ${GREEN}[状态] PocketClaw 运行中 - $status${RESET}"
-        echo -e "  ${CYAN}[地址] http://127.0.0.1:18789/#token=pocketclaw${RESET}"
+        echo -e "  ${GREEN}[状态] PocketClaw 运行中${RESET}"
+        # 读取实际的 Gateway Token（每次启动随机生成）
+        local token=""
+        if [ -f "$PROJECT_DIR/config/workspace/.gateway_token" ]; then
+            token=$(cat "$PROJECT_DIR/config/workspace/.gateway_token" 2>/dev/null | tr -d '\n\r')
+        fi
+        if [ -n "$token" ]; then
+            echo -e "  ${CYAN}[地址] http://127.0.0.1:18789/#token=${token}${RESET}"
+        else
+            echo -e "  ${CYAN}[地址] http://127.0.0.1:18789/${RESET}"
+            echo -e "  ${YELLOW}[提示] Token 未知，请通过菜单 [1] 重新启动获取${RESET}"
+        fi
     else
         echo -e "  [状态] PocketClaw 未运行"
     fi
@@ -111,7 +121,13 @@ do_stop() {
 #  打开浏览器
 # ============================================================
 do_open() {
-    open "http://127.0.0.1:18789/#token=pocketclaw" 2>/dev/null || xdg-open "http://127.0.0.1:18789/#token=pocketclaw" 2>/dev/null || true
+    # 读取实际的 Gateway Token
+    local token=""
+    if [ -f "$PROJECT_DIR/config/workspace/.gateway_token" ]; then
+        token=$(cat "$PROJECT_DIR/config/workspace/.gateway_token" 2>/dev/null | tr -d '\n\r')
+    fi
+    local url="http://127.0.0.1:18789/#token=${token:-pocketclaw}"
+    open "$url" 2>/dev/null || xdg-open "$url" 2>/dev/null || true
     sleep 1
 }
 

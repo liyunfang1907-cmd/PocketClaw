@@ -294,7 +294,115 @@ if not exist "!ENC_FILE!" (
     echo.
 )
 
-:: ── Docker Hub 连通性检测（镜像加速器已在前面配置）──
+:: ── 生成随机网关令牌 ──
+if not defined GATEWAY_AUTH_PASSWORD (
+    for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "-join ([char[]]'abcdefghijklmnopqrstuvwxyz0123456789' | Get-Random -Count 8)"`) do set "GATEWAY_AUTH_PASSWORD=%%t"
+    if not defined GATEWAY_AUTH_PASSWORD set "GATEWAY_AUTH_PASSWORD=pc%RANDOM%%RANDOM%"
+)
+
+:: ── 版本更新检查（在构建前执行，更新后立即使用新版本构建）──
+set /p PC_VER=<"%PROJECT_DIR%\VERSION"
+echo [信息] 当前版本 v!PC_VER!，正在检查更新...
+set "VERSION_API=https://pocketclaw-1380766547.cos.ap-beijing.myqcloud.com/version.json"
+set "LATEST_VER="
+set "DOWNLOAD_URL="
+for /f "usebackq delims=" %%a in (`powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try { $j = (Invoke-WebRequest -Uri '%VERSION_API%' -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop).Content ^| ConvertFrom-Json; Write-Host $j.latest; Write-Host $j.download_url } catch {}" 2^>nul`) do (
+    if "!LATEST_VER!"=="" (
+        set "LATEST_VER=%%a"
+    ) else if "!DOWNLOAD_URL!"=="" (
+        set "DOWNLOAD_URL=%%a"
+    )
+)
+
+if "!LATEST_VER!"=="" (
+    echo [信息] 无法获取版本信息（网络问题），跳过检查
+) else if "!LATEST_VER!"=="!PC_VER!" (
+    echo [OK] 当前已是最新版本 v!PC_VER!
+) else (
+    echo.
+    echo ============================================
+    echo   [更新] 发现新版本 v!LATEST_VER!
+    echo          当前版本 v!PC_VER!
+    echo ============================================
+    echo.
+    echo   （更新不会影响您的私有数据和配置）
+    echo.
+    set /p UPDATE_CHOICE="  是否一键更新？(Y/N, 默认N): "
+    if /i "!UPDATE_CHOICE!"=="Y" (
+        echo.
+        echo [更新] 正在下载更新包...
+        set "UPDATE_ZIP=%TEMP%\PocketClaw-update.zip"
+        set "UPDATE_DIR=%TEMP%\PocketClaw-update"
+        powershell -NoProfile -Command "try { Invoke-WebRequest -Uri '!DOWNLOAD_URL!' -OutFile '!UPDATE_ZIP!' -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop; Write-Host OK } catch { Write-Host FAIL }" > "%TEMP%\oc_dl.tmp" 2>nul
+        set /p DL_RESULT=<"%TEMP%\oc_dl.tmp"
+        del /q "%TEMP%\oc_dl.tmp" 2>nul
+        if "!DL_RESULT!"=="OK" (
+            echo [更新] 下载完成，正在解压...
+            if exist "!UPDATE_DIR!" rd /s /q "!UPDATE_DIR!" 2>nul
+            powershell -NoProfile -Command "Expand-Archive -Path '!UPDATE_ZIP!' -DestinationPath '!UPDATE_DIR!' -Force" 2>nul
+            echo [更新] 正在安装更新...
+            REM 查找解压后的 PocketClaw 目录
+            set "PAYLOAD="
+            if exist "!UPDATE_DIR!\PocketClaw" set "PAYLOAD=!UPDATE_DIR!\PocketClaw"
+            if "!PAYLOAD!"=="" (
+                for /d %%d in ("!UPDATE_DIR!\*") do (
+                    if exist "%%d\VERSION" set "PAYLOAD=%%d"
+                )
+            )
+            if "!PAYLOAD!"=="" (
+                echo [错误] 更新包格式异常，请手动更新
+            ) else (
+                REM 复制根目录文件（不覆盖 .env）
+                for %%f in ("!PAYLOAD!\*.*") do (
+                    set "UFNAME=%%~nxf"
+                    if /i not "!UFNAME!"==".env" (
+                        copy /y "%%f" "%PROJECT_DIR%\" >nul 2>&1
+                    )
+                )
+                REM 复制 scripts/
+                if exist "!PAYLOAD!\scripts" (
+                    xcopy /s /y /q "!PAYLOAD!\scripts\*" "%PROJECT_DIR%\scripts\" >nul 2>&1
+                )
+                REM 复制 config/ 下所有文件（mobile.html, voice-chat.js, openclaw.json）
+                if exist "!PAYLOAD!\config" (
+                    for %%c in ("!PAYLOAD!\config\*.*") do (
+                        copy /y "%%c" "%PROJECT_DIR%\config\" >nul 2>&1
+                    )
+                )
+                REM 复制 config/workspace/ 下的 .md 文件
+                if exist "!PAYLOAD!\config\workspace" (
+                    for %%w in ("!PAYLOAD!\config\workspace\*.md") do (
+                        copy /y "%%w" "%PROJECT_DIR%\config\workspace\" >nul 2>&1
+                    )
+                )
+                REM 复制 config/workspace/skills/
+                if exist "!PAYLOAD!\config\workspace\skills" (
+                    xcopy /s /y /q "!PAYLOAD!\config\workspace\skills\*" "%PROJECT_DIR%\config\workspace\skills\" >nul 2>&1
+                )
+                set /p NEW_VER=<"!PAYLOAD!\VERSION"
+                set "PC_VER=!NEW_VER!"
+                REM 清除构建哈希，强制重新构建新版本镜像
+                if exist "%PROJECT_DIR%\data\.build_hash" del /q "%PROJECT_DIR%\data\.build_hash"
+                echo.
+                echo ============================================
+                echo   [OK] 更新完成！v!PC_VER!
+                echo        正在继续启动新版本...
+                echo ============================================
+                echo.
+            )
+            REM 清理临时文件
+            rd /s /q "!UPDATE_DIR!" 2>nul
+            del /q "!UPDATE_ZIP!" 2>nul
+        ) else (
+            echo [错误] 下载失败，请检查网络或手动访问 pocketclaw.cn 下载
+        )
+    ) else (
+        echo   [信息] 已跳过更新，可随时访问 pocketclaw.cn 下载
+    )
+    echo.
+)
+echo.
+
 echo [信息] 正在检测 Docker Hub 连通性...
 curl -s --connect-timeout 5 --max-time 10 https://registry-1.docker.io/v2/ >nul 2>&1
 if !ERRORLEVEL! equ 0 (
@@ -305,6 +413,31 @@ if !ERRORLEVEL! equ 0 (
 echo.
 
 :: ── 构建并启动容器 ──
+:: ──── 智能构建跳过（检测关键文件是否变化）────
+set "BUILD_HASH_FILE=%PROJECT_DIR%\data\.build_hash"
+set "NEED_BUILD=1"
+
+REM 用 PowerShell 计算关键文件的组合哈希
+set "CURRENT_HASH="
+for /f "usebackq delims=" %%h in (`powershell -NoProfile -Command "try { $files=@('%PROJECT_DIR%\Dockerfile.custom','%PROJECT_DIR%\scripts\entrypoint.sh','%PROJECT_DIR%\config\mobile.html','%PROJECT_DIR%\config\voice-chat.js','%PROJECT_DIR%\config\openclaw.json','%PROJECT_DIR%\VERSION'); $hasher=[System.Security.Cryptography.SHA256]::Create(); $all=[byte[]]@(); foreach($f in $files){if(Test-Path $f){$all+=[IO.File]::ReadAllBytes($f)}}; $hash=$hasher.ComputeHash($all); -join($hash|ForEach-Object{$_.ToString('x2')}) } catch { '' }"`) do set "CURRENT_HASH=%%h"
+
+REM 读取上次构建哈希
+set "PREV_HASH="
+if exist "!BUILD_HASH_FILE!" (
+    set /p PREV_HASH=<"!BUILD_HASH_FILE!"
+)
+
+REM 比较哈希 + 检查镜像是否存在
+if "!CURRENT_HASH!" neq "" if "!CURRENT_HASH!"=="!PREV_HASH!" (
+    docker image inspect pocketclaw-pocketclaw:latest >nul 2>&1
+    if !ERRORLEVEL! equ 0 (
+        set "NEED_BUILD=0"
+        echo [OK] 镜像未变化，跳过构建（秒级启动）
+    )
+)
+
+if "!NEED_BUILD!"=="0" goto :skip_build
+
 echo [信息] 正在构建并启动 PocketClaw 容器...
 echo        首次构建大约需要 2-5 分钟，请耐心等待。
 echo        详细日志保存在: data\logs\build.log
@@ -358,15 +491,21 @@ if "!BUILD_RESULT!"=="FAIL" (
     pause
     exit /b 1
 )
+REM 保存构建指纹
+if "!CURRENT_HASH!" neq "" echo !CURRENT_HASH!> "!BUILD_HASH_FILE!"
+
+:skip_build
+
 
 echo.
-set /p PC_VER=<"%PROJECT_DIR%\VERSION"
+REM 版本号已在更新检查阶段读取（PC_VER）
 
 :: 检测局域网 IP（用于手机访问）
 set "LAN_IP="
 for /f "usebackq delims=" %%a in (`powershell -NoProfile -Command "try { (Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -ne $null } | Select-Object -First 1).IPv4Address.IPAddress } catch {}"`) do set "LAN_IP=%%a"
 if not "!LAN_IP!"=="" (
     echo !LAN_IP!> "%PROJECT_DIR%\config\workspace\.host_ip"
+    echo !GATEWAY_AUTH_PASSWORD!> "%PROJECT_DIR%\config\workspace\.gateway_token"
     REM 确保防火墙放行 18789 端口（允许手机访问）
     netsh advfirewall firewall show rule name="PocketClaw" >nul 2>&1
     if !ERRORLEVEL! neq 0 (
@@ -378,11 +517,14 @@ echo ============================================
 echo   [OK] PocketClaw v!PC_VER! 已成功启动！
 echo ============================================
 echo.
-echo   控制面板: http://127.0.0.1:18789/#token=pocketclaw
+echo   控制面板: http://127.0.0.1:18789/#token=!GATEWAY_AUTH_PASSWORD!
 if not "!LAN_IP!"=="" (
-    echo   手机访问: http://!LAN_IP!:18789/__openclaw__/canvas/app.html
+    echo   手机访问: http://!LAN_IP!:18789/mobile.html#token=!GATEWAY_AUTH_PASSWORD!
     echo.
-    echo   [提示] 手机打开后可"添加到主屏幕"当 APP 使用
+    echo   [扫码手机访问]
+    echo.
+    docker exec pocketclaw python3 -c "import qrcode,sys;qr=qrcode.QRCode(border=1);qr.add_data(sys.argv[1]);qr.print_ascii()" "http://!LAN_IP!:18789/mobile.html#token=!GATEWAY_AUTH_PASSWORD!" 2>nul
+    echo.
 )
 echo.
 echo   停止服务: scripts\stop.bat
@@ -394,96 +536,9 @@ echo          请等待约 10 秒后刷新页面即可
 echo ============================================
 echo.
 
-:: ── 版本更新检查 ──
-echo [信息] 正在检查更新...
-set "VERSION_API=http://82.156.244.48/version.json"
-set "LATEST_VER="
-set "DOWNLOAD_URL="
-for /f "usebackq delims=" %%a in (`powershell -NoProfile -Command "try { $j = (Invoke-WebRequest -Uri '%VERSION_API%' -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop).Content | ConvertFrom-Json; Write-Host $j.latest; Write-Host $j.download_url } catch {}" 2^>nul`) do (
-    if "!LATEST_VER!"=="" (
-        set "LATEST_VER=%%a"
-    ) else if "!DOWNLOAD_URL!"=="" (
-        set "DOWNLOAD_URL=%%a"
-    )
-)
-
-if "!LATEST_VER!"=="" (
-    echo [信息] 无法获取版本信息（网络问题），跳过检查
-) else if "!LATEST_VER!"=="!PC_VER!" (
-    echo [OK] 当前已是最新版本 v!PC_VER!
-) else (
-    echo.
-    echo ============================================
-    echo   [更新] 发现新版本 v!LATEST_VER!
-    echo          当前版本 v!PC_VER!
-    echo ============================================
-    echo.
-    echo   （更新不会影响您的私有数据和配置）
-    echo.
-    set /p UPDATE_CHOICE="  是否一键更新？(Y/N, 默认N): "
-    if /i "!UPDATE_CHOICE!"=="Y" (
-        echo.
-        echo [更新] 正在下载更新包...
-        set "UPDATE_ZIP=%TEMP%\PocketClaw-update.zip"
-        set "UPDATE_DIR=%TEMP%\PocketClaw-update"
-        powershell -NoProfile -Command "try { Invoke-WebRequest -Uri '!DOWNLOAD_URL!' -OutFile '!UPDATE_ZIP!' -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop; Write-Host OK } catch { Write-Host FAIL }" > "%TEMP%\oc_dl.tmp" 2>nul
-        set /p DL_RESULT=<"%TEMP%\oc_dl.tmp"
-        del /q "%TEMP%\oc_dl.tmp" 2>nul
-        if "!DL_RESULT!"=="OK" (
-            echo [更新] 下载完成，正在解压...
-            if exist "!UPDATE_DIR!" rd /s /q "!UPDATE_DIR!" 2>nul
-            powershell -NoProfile -Command "Expand-Archive -Path '!UPDATE_ZIP!' -DestinationPath '!UPDATE_DIR!' -Force" 2>nul
-            echo [更新] 正在安装更新...
-            REM 查找解压后的 PocketClaw 目录
-            set "PAYLOAD="
-            if exist "!UPDATE_DIR!\PocketClaw" set "PAYLOAD=!UPDATE_DIR!\PocketClaw"
-            if "!PAYLOAD!"=="" (
-                for /d %%d in ("!UPDATE_DIR!\*") do (
-                    if exist "%%d\VERSION" set "PAYLOAD=%%d"
-                )
-            )
-            if "!PAYLOAD!"=="" (
-                echo [错误] 更新包格式异常，请手动更新
-            ) else (
-                REM 复制更新文件（不覆盖 secrets/data/.env）
-                for %%f in ("!PAYLOAD!\*.*") do (
-                    set "UFNAME=%%~nxf"
-                    if /i not "!UFNAME!"==".env" (
-                        copy /y "%%f" "%PROJECT_DIR%\" >nul 2>&1
-                    )
-                )
-                if exist "!PAYLOAD!\scripts" (
-                    xcopy /s /y /q "!PAYLOAD!\scripts\*" "%PROJECT_DIR%\scripts\" >nul 2>&1
-                )
-                if exist "!PAYLOAD!\config\openclaw.json" (
-                    copy /y "!PAYLOAD!\config\openclaw.json" "%PROJECT_DIR%\config\openclaw.json" >nul 2>&1
-                )
-                if exist "!PAYLOAD!\config\workspace\AGENTS.md" (
-                    copy /y "!PAYLOAD!\config\workspace\AGENTS.md" "%PROJECT_DIR%\config\workspace\AGENTS.md" >nul 2>&1
-                )
-                set /p NEW_VER=<"!PAYLOAD!\VERSION"
-                echo.
-                echo ============================================
-                echo   [OK] 更新完成! v!PC_VER! → v!NEW_VER!
-                echo ============================================
-                echo   更新将在下次启动时生效
-                echo.
-            )
-            REM 清理临时文件
-            rd /s /q "!UPDATE_DIR!" 2>nul
-            del /q "!UPDATE_ZIP!" 2>nul
-        ) else (
-            echo [错误] 下载失败，请检查网络或手动访问 pocketclaw.cn 下载
-        )
-    ) else (
-        echo   [信息] 已跳过更新，可随时访问 pocketclaw.cn 下载
-    )
-    echo.
-)
-
 :: 打开浏览器
 echo [信息] 正在打开浏览器...
-start "" "http://127.0.0.1:18789/#token=pocketclaw"
+start "" "http://127.0.0.1:18789/#token=!GATEWAY_AUTH_PASSWORD!"
 echo.
 
 :: ── 安全擦除明文 .env（覆写后删除，ExFAT 最佳努力） ──

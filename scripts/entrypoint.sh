@@ -255,6 +255,9 @@ cat > "$CONFIG_FILE" << JSONEOF
       "token": "$AUTH_PASS"
     }
   },
+  "tools": {
+    "profile": "full"
+  },
   "browser": {
     "enabled": true,
     "headless": true,
@@ -282,62 +285,96 @@ echo "  ✅ WebChat (内置)"
 printf "$ACTIVE_CHANNELS"
 echo "============================================"
 
-# ── 生成手机 PWA 入口页（解决主屏幕快捷方式 token 丢失问题）──
-CANVAS_DIR="$CONFIG_DIR/canvas"
-mkdir -p "$CANVAS_DIR"
+# ── 将 token 写入 workspace 供 AI 读取 ──
+echo "$AUTH_PASS" > "$CONFIG_DIR/workspace/.gateway_token"
 
-cat > "$CANVAS_DIR/app.html" << 'PWAEOF'
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1a1a2e">
-<link rel="manifest" href="manifest.json">
-<title>PocketClaw</title>
-<style>*{margin:0;padding:0}html,body{width:100%;height:100%;overflow:hidden;background:#1a1a2e}iframe{width:100%;height:100vh;height:100dvh;border:none}</style>
-</head>
-<body>
-<iframe id="app" allow="microphone;camera"></iframe>
-<script>
-(function(){
-  var h=location.hash;
-  if(h&&h.indexOf('token=')>=0){
-    localStorage.setItem('pc_token',h.split('token=')[1].split('&')[0]);
-  }
-  var t=localStorage.getItem('pc_token')||'pocketclaw';
-  document.getElementById('app').src='/#token='+t;
-})();
-</script>
-</body>
-</html>
-PWAEOF
+# ── 注入自定义页面到 OpenClaw 前端 ──
+CONTROL_UI_DIR="$(dirname "$(find /usr/local/lib/node_modules/openclaw -name index.html -path '*/control-ui/*' 2>/dev/null)" 2>/dev/null)"
+MOBILE_HTML="/app/config/mobile.html"
 
-cat > "$CANVAS_DIR/manifest.json" << 'MANEOF'
-{
-  "name": "PocketClaw",
-  "short_name": "PocketClaw",
-  "description": "你的便携 AI 助手",
-  "start_url": "app.html",
-  "display": "standalone",
-  "orientation": "any",
-  "background_color": "#1a1a2e",
-  "theme_color": "#e94560",
-  "icons": [
-    {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🦞%3C/text%3E%3C/svg%3E",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    }
-  ]
-}
-MANEOF
+if [ -d "$CONTROL_UI_DIR" ]; then
+    # 注入手机专属页面
+    if [ -f "$MOBILE_HTML" ]; then
+        cp "$MOBILE_HTML" "$CONTROL_UI_DIR/mobile.html" 2>/dev/null && \
+            echo "  ✅ 手机专属页面已注入" || echo "  ⚠️  手机页面注入失败"
+    fi
+else
+    echo "  ⚠️  未找到 control-ui 目录，跳过 UI 自定义"
+fi
 
-echo "[PocketClaw] 手机 PWA 入口已生成"
+# ── 注入自定义文件路由到 Gateway（绕过 canvasHost SPA 拦截）──
+# canvasHost.handleHttpRequest 会在 handleControlUiHttpRequest 之前拦截所有页面请求，
+# 导致 mobile.html 被替换为 SPA 的 index.html。此 patch 在 canvasHost 之前插入
+# 一个处理器，直接从磁盘提供 mobile.html。
+if [ -d "$CONTROL_UI_DIR" ]; then
+    GW_DIR="$(dirname "$CONTROL_UI_DIR")"
+    export CONTROL_UI_DIR GW_DIR
+    python3 -c '
+import os, sys, glob
+
+gw_dir = os.environ.get("GW_DIR", "")
+ui_dir = os.environ.get("CONTROL_UI_DIR", "")
+
+# Find gateway-cli JS files
+gw_files = glob.glob(os.path.join(gw_dir, "gateway-cli-*.js"))
+patched = False
+
+for gw_file in gw_files:
+    try:
+        with open(gw_file, "r") as f:
+            content = f.read()
+    except (PermissionError, OSError):
+        continue
+
+    # Skip if already patched
+    if "_pocketClawCustomFiles" in content:
+        patched = True
+        continue
+
+    # Find handleRequest function
+    hr = content.find("async function handleRequest(req, res)")
+    if hr == -1:
+        continue
+
+    # Find "if (canvasHost) {" after handleRequest
+    target = content.find("if (canvasHost) {", hr)
+    if target == -1:
+        continue
+
+    # Injection: serve custom files before canvasHost intercepts them
+    inject = (
+        "\t\t\t\t{\n"
+        "\t\t\t\t\tconst _pocketClawCustomFiles = {\n"
+        "\t\t\t\t\t\t\x27/mobile.html\x27: \x27text/html; charset=utf-8\x27\n"
+        "\t\t\t\t\t};\n"
+        "\t\t\t\t\tconst _pcMime = _pocketClawCustomFiles[requestPath];\n"
+        "\t\t\t\t\tif (_pcMime) {\n"
+        "\t\t\t\t\t\ttry {\n"
+        "\t\t\t\t\t\t\tconst _pcFs = await import(\x27node:fs\x27);\n"
+        "\t\t\t\t\t\t\tconst _pcData = _pcFs.default.readFileSync(\x27" + ui_dir.replace("\\\\", "\\\\\\\\") + "\x27 + requestPath);\n"
+        "\t\t\t\t\t\t\tres.writeHead(200, { \x27Content-Type\x27: _pcMime, \x27Cache-Control\x27: \x27no-cache\x27, \x27Content-Security-Policy\x27: \"default-src \x27self\x27; script-src \x27self\x27 \x27unsafe-inline\x27; style-src \x27self\x27 \x27unsafe-inline\x27 https://fonts.googleapis.com; img-src \x27self\x27 data: https:; font-src \x27self\x27 https://fonts.gstatic.com; connect-src \x27self\x27 ws: wss:; base-uri \x27none\x27; object-src \x27none\x27; frame-ancestors \x27none\x27\" });\n"
+        "\t\t\t\t\t\t\tres.end(_pcData);\n"
+        "\t\t\t\t\t\t\treturn;\n"
+        "\t\t\t\t\t\t} catch(_pcErr) { /* fall through */ }\n"
+        "\t\t\t\t\t}\n"
+        "\t\t\t\t}\n"
+    )
+
+    new_content = content[:target] + inject + content[target:]
+    try:
+        with open(gw_file, "w") as f:
+            f.write(new_content)
+        patched = True
+    except (PermissionError, OSError) as e:
+        print(f"  ⚠️  无法写入 {gw_file}: {e}")
+        continue
+
+if patched:
+    print("  ✅ Gateway 自定义路由已注入")
+else:
+    print("  ⚠️  Gateway 路由注入失败（mobile.html 可能无法访问）")
+' 2>&1 || echo "  ⚠️  Gateway 路由注入脚本出错"
+fi
 
 # ── 启动 OpenClaw Gateway ──
 exec openclaw gateway --port 18789 --verbose

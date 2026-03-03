@@ -34,8 +34,13 @@ if !ERRORLEVEL! neq 0 (
     if "!OC_STATUS!"=="" (
         echo   [状态] PocketClaw 未启动
     ) else (
-        echo   [状态] PocketClaw 运行中 - !OC_STATUS!
-        echo   [地址] http://127.0.0.1:18789/#token=pocketclaw
+        echo   [状态] PocketClaw 运行中
+        set "MENU_TOKEN="
+        if exist "!PROJECT_DIR!\config\workspace\.gateway_token" (
+            set /p MENU_TOKEN=<"!PROJECT_DIR!\config\workspace\.gateway_token"
+        )
+        if "!MENU_TOKEN!"=="" set "MENU_TOKEN=pocketclaw"
+        echo   [地址] http://127.0.0.1:18789/#token=!MENU_TOKEN!
     )
 )
 if exist "!ENC_FILE!" (
@@ -89,7 +94,12 @@ REM ============================================================
 REM  打开网页版
 REM ============================================================
 :do_open
-start "" "http://127.0.0.1:18789/#token=pocketclaw"
+set "GW_TOKEN="
+if exist "%PROJECT_DIR%\config\workspace\.gateway_token" (
+    set /p GW_TOKEN=<"%PROJECT_DIR%\config\workspace\.gateway_token"
+)
+if "!GW_TOKEN!"=="" set "GW_TOKEN=pocketclaw"
+start "" "http://127.0.0.1:18789/#token=!GW_TOKEN!"
 timeout /t 1 >nul
 goto :menu
 
