@@ -306,13 +306,15 @@ echo [信息] 当前版本 v!PC_VER!，正在检查更新...
 set "VERSION_API=https://pocketclaw-1380766547.cos.ap-beijing.myqcloud.com/version.json"
 set "LATEST_VER="
 set "DOWNLOAD_URL="
-for /f "usebackq delims=" %%a in (`powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try { $j = (Invoke-WebRequest -Uri '%VERSION_API%' -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop).Content ^| ConvertFrom-Json; Write-Host $j.latest; Write-Host $j.download_url } catch {}" 2^>nul`) do (
+powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try { $j = (Invoke-WebRequest -Uri '%VERSION_API%' -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop).Content | ConvertFrom-Json; Write-Host $j.latest; Write-Host $j.download_url } catch {}" > "%TEMP%\oc_ver.tmp" 2>nul
+for /f "usebackq delims=" %%a in ("%TEMP%\oc_ver.tmp") do (
     if "!LATEST_VER!"=="" (
         set "LATEST_VER=%%a"
     ) else if "!DOWNLOAD_URL!"=="" (
         set "DOWNLOAD_URL=%%a"
     )
 )
+del /q "%TEMP%\oc_ver.tmp" 2>nul
 
 if "!LATEST_VER!"=="" (
     echo [信息] 无法获取版本信息（网络问题），跳过检查

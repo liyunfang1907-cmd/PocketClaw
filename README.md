@@ -825,7 +825,7 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 
 | 项目 | 版本/日期 |
 |------|----------|
-| 本方案文档版本 | v1.2.2 |
+| 本方案文档版本 | v1.2.3 |
 | 创建日期 | 2026-02-25 |
 | 安全加固日期 | 2026-02-25 |
 | 远程更新功能 | 2026-02-25 |
@@ -837,17 +837,29 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 | 手机访问 & 代码审计修复 | 2026-03-02 |
 | 版本检查 & tools.profile 修复 | 2026-03-03 |
 | Windows 版本检查 & 桌面语音移除 | 2026-03-03 |
+| 手机页面修复 & 聊天持久化 | 2026-03-03 |
 | PocketClaw 目标版本 | 2026.3.2 (latest stable) |
 | 许可证 | 本部署方案：个人使用；PocketClaw：MIT License |
 
-### 17.1 v1.2.2 更新内容
+### 17.1 v1.2.3 更新内容
+
+- [x] 修复手机页面主脚本无法加载（缺少 `</script>` 闭合标签）
+- [x] 修复 `catch {}` 语法不兼容微信 WebView（改为 `catch(e) {}`）
+- [x] 修复消息发送失败 `missing scope: operator.write`（scopes 改为 operator.admin）
+- [x] 修复 AI 回复不显示（sessionKey 匹配从严格相等改为包含匹配）
+- [x] 新增聊天记录持久化（localStorage 自动保存/恢复）
+- [x] 新增页面切换自动重连（visibilitychange + pageshow 检测）
+- [x] 不支持语音识别时自动隐藏麦克风按钮
+- [x] 调试面板默认隐藏（点击标题 3 次可打开）
+
+### 17.2 v1.2.2 更新内容
 
 - [x] 修复 Windows 版本检查失败（缺少 TLS 1.2 设置导致 HTTPS 请求被拒）
 - [x] 修复 Docker 等待计时器缺少 sleep 导致假超时
 - [x] 移除桌面端语音按钮（voice-chat.js 不再注入 control-ui）
 - [x] 手机页面 WebSocket 连接修复（等待 connect.challenge 再认证）
 
-### 17.2 v1.2.1 更新内容
+### 17.3 v1.2.1 更新内容
 
 - [x] OpenClaw 升级至 2026.3.2（新增 PDF 工具、Telegram 流式预览、日志本地时间等）
 - [x] 修复 tools.profile 默认值变更导致新安装工具集缺失的问题
@@ -856,7 +868,7 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 - [x] 修复 QR 码生成失败问题（改用容器内 Python 生成）
 - [x] 修复备用启动路径未传递 GATEWAY_AUTH_PASSWORD 的问题
 
-### 17.3 v1.1.2 更新内容
+### 17.4 v1.1.2 更新内容
 
 - [x] 手机访问修复：自动添加 Windows 防火墙规则放行 18789 端口
 - [x] 浏览器配置修复：noSandbox=true + defaultProfile=openclaw，解决 Docker 内 Chromium 无法启动
@@ -867,7 +879,7 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 - [x] 使用指南新增手机/平板访问说明
 - [x] 添加 .gitkeep 确保空目录结构完整
 
-### 17.2 v1.1.1 更新内容
+### 17.5 v1.1.1 更新内容
 
 - [x] OpenClaw 引擎升级至 2026.3.1（含 Docker 健康检查端点、Windows spawn 修复、中文本地化等）
 - [x] Docker 容器健康检查：利用 /health 端点自动监测容器状态
@@ -879,7 +891,7 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 - [x] ZIP 打包改用 Python zipfile，修复 Windows 解压中文文件名乱码
 - [x] .bat 编码全面修复：GBK + CRLF + 无 chcp 65001（防字节吞噬 bug）
 
-### 17.3 v1.1.0 更新内容
+### 17.6 v1.1.0 更新内容
 
 - [x] 新增 10 种聊天频道支持：Telegram、Discord、Slack、WhatsApp、Signal、Google Chat、Microsoft Teams、Matrix、BlueBubbles (iMessage)、Zalo
 - [x] 新增 `setup-channels.sh` / `setup-channels.bat` 频道配置向导
@@ -899,7 +911,7 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 - [x] 使用指南.txt 更新至 v1.1.0，补充频道配置说明
 - [x] 108 MacBook + 105 Windows 双系统完整测试通过
 
-### 17.4 v1.0.3 更新内容
+### 17.7 v1.0.3 更新内容
 
 - [x] 简化为智谱 GLM-4.7-Flash 单模型（永久免费）
 - [x] Windows 全自动安装：Docker Desktop、WSL2、Git 自动检测并安装
@@ -909,20 +921,20 @@ Docker 镜像支持多架构（`linux/amd64` + `linux/arm64`），构建时 Dock
 - [x] 移除 Telegram/Email 冗余配置脚本
 - [x] 文档整合：删除 QUICKSTART_WINDOWS.md，统一使用使用指南.txt
 
-### 17.5 v1.0.2 更新内容
+### 17.8 v1.0.2 更新内容
 
 - [x] 新增 `LICENSE.md` 开源许可证
 - [x] 新增 `verify-integrity.sh` SHA-256 完整性校验
 - [x] 全部脚本界面汉化（67+ 处英文标签改为中文）
 
-### 17.6 v1.0.1 更新内容
+### 17.9 v1.0.1 更新内容
 
 - [x] 新增远程更新机制：`create-update.sh` 生成更新包，朋友一键安装
 - [x] 新增 `install-update.bat` / `install-update.sh` 更新安装器
 - [x] 新增 `VERSION` 版本追踪文件
 - [x] 自动扫描 U 盘位置、回滚备份、数据保护
 
-### 17.7 v1.0.0 安全加固清单
+### 17.10 v1.0.0 安全加固清单
 
 - [x] 修复 openssl `-pass pass:` 密码在进程列表中泄露（所有脚本改用 `-pass stdin`）
 - [x] Windows 密码输入改用 PowerShell `SecureString` 掩码显示

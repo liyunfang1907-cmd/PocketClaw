@@ -16,7 +16,7 @@
 
 【安装前提】
 
-  v1.2.2 已实现全自动安装，首次启动会自动检测并安装所需软件：
+  v1.2.3 已实现全自动安装，首次启动会自动检测并安装所需软件：
   - Docker Desktop（使用 U 盘内置安装包）
   - WSL2（Windows 子系统，Docker 运行必需）
   - Git（源码下载和加密工具）
@@ -323,7 +323,7 @@
 
   Q6: 启动时报 "connection timeout" 或 "auth.docker.io" 错误
   → 国内网络无法直接访问 Docker Hub。
-  → v1.2.2 启动脚本会自动检测并配置镜像加速器。
+  → v1.2.3 启动脚本会自动检测并配置镜像加速器。
   → 如果自动配置未生效，可手动配置：
     Windows/macOS: Docker Desktop → Settings → Docker Engine，
     在 JSON 最后一个 } 之前加上（注意前面的逗号）：
@@ -359,7 +359,7 @@
   七、聊天频道配置（可选）
 =====================================================================
 
-  PocketClaw v1.2.2 支持 11 种聊天频道：
+  PocketClaw v1.2.3 支持 11 种聊天频道：
 
   WebChat（内置，默认开启）、Telegram、Discord、Slack、WhatsApp、
   Signal、Google Chat、Microsoft Teams、Matrix、BlueBubbles (iMessage)、Zalo
@@ -374,7 +374,7 @@
 
 
 =====================================================================
-PocketClaw v1.2.2 | 最后更新: 2026-03-03
+PocketClaw v1.2.3 | 最后更新: 2026-03-03
 =====================================================================
 
 

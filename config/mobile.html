@@ -333,6 +333,16 @@ html, body {
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
 }
+#debug-panel {
+  background: #1a1a2e; color: #0f0; font: 11px/1.4 monospace;
+  padding: 8px 12px; max-height: 150px; overflow-y: auto;
+  display: block; border-bottom: 2px solid #e94560;
+}
+#debug-panel.hide { display: none; }
+#debug-panel div { word-break: break-all; }
+#debug-panel .err { color: #e94560; }
+#debug-panel .ok { color: #0f0; }
+#debug-panel .info { color: #8af; }
 </style>
 </head>
 <body>
@@ -340,11 +350,14 @@ html, body {
   <!-- 顶部栏 -->
   <div id="header">
     <div>
-      <div class="title">🤖 PocketClaw</div>
+      <div class="title" id="title-tap">🤖 PocketClaw</div>
       <div class="status" id="conn-status">连接中...</div>
     </div>
     <button id="mode-toggle" title="切换文字/语音">⌨️</button>
   </div>
+
+  <!-- 调试面板（点击标题 3 次显示） -->
+  <div id="debug-panel" class="hide"></div>
 
   <!-- 消息列表 -->
   <div id="messages"></div>
@@ -367,10 +380,52 @@ html, body {
 <!-- Toast -->
 <div id="toast"></div>
 
+<!-- 独立调试脚本（即使主脚本有语法错误也能工作） -->
+<script>
+(function(){
+  var panel = document.getElementById('debug-panel');
+  var logs = [];
+  window._dbg = function(msg, cls) {
+    var ts = new Date().toLocaleTimeString('zh-CN', {hour12:false});
+    logs.push({ts:ts, msg:msg, cls:cls||'info'});
+    if (logs.length > 80) logs.shift();
+    if (panel) {
+      var d = document.createElement('div');
+      d.className = cls || 'info';
+      d.textContent = ts + ' ' + msg;
+      panel.appendChild(d);
+      panel.scrollTop = panel.scrollHeight;
+    }
+  };
+  window.onerror = function(msg, src, line, col) {
+    window._dbg('JS ERROR: ' + msg + ' @L' + line + ':' + col, 'err');
+  };
+  window.addEventListener('unhandledrejection', function(e) {
+    window._dbg('PROMISE: ' + (e.reason && e.reason.message || e.reason), 'err');
+  });
+  window._dbg('Debug panel ready');
+
+  // 延迟检查主脚本是否加载成功
+  setTimeout(function() {
+    if (!window._PC) {
+      window._dbg('MAIN SCRIPT NOT LOADED!', 'err');
+      window._dbg('UA: ' + navigator.userAgent, 'info');
+      window._dbg('URL: ' + location.href, 'info');
+      window._dbg('Hash: ' + location.hash, 'info');
+      // 记录基本信息便于远程调试
+    } else {
+      window._dbg('Main script loaded OK', 'ok');
+    }
+  }, 1500);
+})();
+</script>
+
 <script>
 /* ── PocketClaw Mobile Client ── */
 (function() {
 'use strict';
+
+var dbg = window._dbg || function(){};
 
 // ── 全局状态 ──
 const STATE = {
@@ -396,6 +451,23 @@ const STATE = {
 // ── DOM 缓存 ──
 const $ = id => document.getElementById(id);
 const DOM = {};
+
+// ── 聊天记录持久化 ──
+const STORAGE_KEY = 'pocketclaw_chat_history';
+function saveChatHistory() {
+  try {
+    const msgs = DOM.messages ? DOM.messages.innerHTML : '';
+    localStorage.setItem(STORAGE_KEY, msgs);
+  } catch(e) {}
+}
+function loadChatHistory() {
+  try {
+    return localStorage.getItem(STORAGE_KEY) || '';
+  } catch(e) { return ''; }
+}
+function clearChatHistory() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+}
 
 // ── 工具函数 ──
 function uuid() {
@@ -434,34 +506,52 @@ function wsConnect() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const url = proto + '//' + location.host;
   setStatus('连接中...', '');
+  dbg('WS connecting → ' + url);
 
-  const ws = new WebSocket(url);
+  let ws;
+  try {
+    ws = new WebSocket(url);
+  } catch(e) {
+    dbg('WS constructor error: ' + e.message, 'err');
+    setStatus('连接失败', 'error');
+    scheduleReconnect();
+    return;
+  }
   STATE.ws = ws;
 
   ws.onopen = () => {
+    dbg('WS opened!', 'ok');
     STATE.backoffMs = 800;
     // 等待 connect.challenge 事件再发送 connect（匹配官方 control-ui 行为）
     // 设置 750ms 兜底定时器，若 challenge 未到则直接连接
     STATE.connectTimer = setTimeout(() => {
-      if (!STATE.connectSent) sendConnect();
+      if (!STATE.connectSent) {
+        dbg('challenge timeout, sending connect directly');
+        sendConnect();
+      }
     }, 750);
   };
 
   ws.onmessage = (evt) => {
     let msg;
-    try { msg = JSON.parse(evt.data); } catch { return; }
+    try { msg = JSON.parse(evt.data); } catch(e) { return; }
+    if (msg.type === 'event' && msg.event === 'connect.challenge') {
+      dbg('Got challenge nonce=' + (msg.payload && msg.payload.nonce || '?').slice(0,8));
+    }
     handleMessage(msg);
   };
 
-  ws.onclose = () => {
+  ws.onclose = (evt) => {
     STATE.connected = false;
     clearTimeout(STATE.connectTimer);
+    dbg('WS closed code=' + evt.code + ' reason=' + (evt.reason || 'n/a'), 'err');
     setStatus('已断开', 'error');
     scheduleReconnect();
   };
 
-  ws.onerror = () => {
+  ws.onerror = (evt) => {
     STATE.connected = false;
+    dbg('WS error event fired', 'err');
     setStatus('连接失败', 'error');
   };
 }
@@ -472,6 +562,29 @@ function scheduleReconnect() {
     wsConnect();
   }, STATE.backoffMs);
   STATE.backoffMs = Math.min(STATE.backoffMs * 1.5, 15000);
+}
+
+// 检测连接是否存活
+function checkAlive() {
+  if (!STATE.ws || STATE.ws.readyState !== WebSocket.OPEN) {
+    dbg('Connection dead, reconnecting...', 'err');
+    STATE.connected = false;
+    setStatus('重连中...', '');
+    wsConnect();
+    return;
+  }
+  // 发送 health ping 检测
+  try {
+    request('health', {}).then(() => {
+      dbg('Health OK', 'ok');
+    }).catch(() => {
+      dbg('Health failed, reconnecting...', 'err');
+      STATE.connected = false;
+      wsConnect();
+    });
+  } catch(e) {
+    wsConnect();
+  }
 }
 
 function sendJSON(obj) {
@@ -505,26 +618,25 @@ function sendConnect() {
     minProtocol: 3,
     maxProtocol: 3,
     client: {
-      id: 'pocketclaw-mobile',
+      id: 'webchat-ui',
       version: '1.0',
       platform: 'mobile-web',
       mode: 'webchat'
     },
     role: 'operator',
-    scopes: ['operator.admin', 'operator.approvals', 'operator.pairing'],
+    scopes: ['operator.admin'],
     caps: [],
     auth: { token: STATE.token },
     userAgent: navigator.userAgent,
     locale: navigator.language || 'zh-CN'
   };
-  if (STATE.connectNonce) {
-    params.nonce = STATE.connectNonce;
-  }
   request('connect', params).then(res => {
     STATE.connected = true;
     setStatus('已连接', 'connected');
+    dbg('Connected OK!', 'ok');
   }).catch(err => {
     setStatus('认证失败', 'error');
+    dbg('Connect failed: ' + (err.message || JSON.stringify(err)), 'err');
     showToast('认证失败: ' + (err.message || err));
   });
 }
@@ -576,9 +688,11 @@ function handleEvent(msg) {
   }
 }
 
-// 占位 - 子步骤 4 填充
 function handleChatEvent(payload) {
-  if (!payload || payload.sessionKey !== STATE.sessionKey) return;
+  if (!payload) return;
+  // sessionKey 可能是 'agent:main:main' 等格式，只要包含我们的 key 即可
+  var sk = payload.sessionKey || '';
+  if (sk !== STATE.sessionKey && sk.indexOf(STATE.sessionKey) === -1) return;
   const state = payload.state;
   const msgData = payload.message;
 
@@ -671,6 +785,7 @@ function addUserBubble(text) {
   div.innerHTML = '<div class="bubble">' + escapeHtml(text) + '</div><div class="msg-time">' + timeStr() + '</div>';
   DOM.messages.appendChild(div);
   scrollToBottom();
+  saveChatHistory();
 }
 
 function escapeHtml(s) {
@@ -725,6 +840,7 @@ function finalizeAIMessage(text) {
     DOM.messages.appendChild(div);
   }
   scrollToBottom();
+  saveChatHistory();
 
   // 如果上次输入是语音，自动朗读
   if (STATE.lastInputWasVoice && STATE.ttsEnabled) {
@@ -876,13 +992,48 @@ function init() {
   DOM.micBtn = $('mic-btn');
   DOM.voiceHint = $('voice-hint');
 
+  // 调试面板：连续点击标题 3 次显示
+  let _tapCount = 0, _tapTimer = null;
+  const titleEl = $('title-tap');
+  if (titleEl) {
+    titleEl.addEventListener('click', () => {
+      _tapCount++;
+      clearTimeout(_tapTimer);
+      _tapTimer = setTimeout(() => { _tapCount = 0; }, 600);
+      if (_tapCount >= 3) {
+        _tapCount = 0;
+        const dp = $('debug-panel');
+        dp.classList.toggle('hide');
+      }
+    });
+  }
+
+  // 恢复历史聊天记录
+  const savedChat = loadChatHistory();
+  if (savedChat && DOM.messages) {
+    DOM.messages.innerHTML = savedChat;
+    // 移除可能残留的打字指示器和流式气泡
+    const oldTyping = $('typing');
+    if (oldTyping) oldTyping.remove();
+    const oldStream = $('stream-bubble');
+    if (oldStream) oldStream.remove();
+    scrollToBottom();
+  }
+
+  // 初始调试信息
+  dbg('URL: ' + location.href);
+  dbg('Host: ' + location.host);
+  dbg('UA: ' + navigator.userAgent.slice(0, 80));
+
   // 从 URL hash 读取 token
   const hash = location.hash.replace('#', '');
   const params = new URLSearchParams(hash.includes('=') ? hash.replace(/^token=/, 'token=') : '');
   STATE.token = params.get('token') || hash || '';
+  dbg('Token: ' + (STATE.token ? STATE.token.slice(0,3) + '***' : 'EMPTY'));
   if (!STATE.token) {
     setStatus('缺少 Token', 'error');
     showToast('URL 中缺少 token 参数', 3000);
+    dbg('No token found!', 'err');
     return;
   }
 
@@ -944,9 +1095,25 @@ function init() {
   });
 
   // 如果不支持 STT，隐藏模式切换按钮
-  if (!hasSTT && !window.speechSynthesis) {
+  if (!hasSTT) {
     DOM.modeToggle.style.display = 'none';
   }
+
+  // ── 页面可见性变化处理（iOS 切换 App 后重连） ──
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      dbg('Page visible, checking connection...');
+      // 延迟一小段时间让网络恢复
+      setTimeout(() => checkAlive(), 300);
+    }
+  });
+  // iOS Safari pageshow 事件（从 bfcache 恢复时触发）
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) {
+      dbg('Page restored from cache, reconnecting...');
+      setTimeout(() => checkAlive(), 300);
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -961,5 +1128,6 @@ window._uuid = uuid;
 window._timeStr = timeStr;
 
 })();
+</script>
 </body>
 </html>
