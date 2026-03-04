@@ -628,7 +628,7 @@ docker network rm pocketclaw_default >> "$BUILD_LOG" 2>&1 || true
 
 # ── 生成随机 Gateway Token（每次启动不同，防止局域网未授权访问）──
 if [ -z "${GATEWAY_AUTH_PASSWORD:-}" ]; then
-    GATEWAY_AUTH_PASSWORD=$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 16 || true)
+    GATEWAY_AUTH_PASSWORD=$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 8 || true)
     # 若 urandom 失败，使用时间戳+进程号
     if [ -z "$GATEWAY_AUTH_PASSWORD" ]; then
         GATEWAY_AUTH_PASSWORD="pc$(date +%s)$$$(( RANDOM % 9999 ))"
@@ -747,8 +747,7 @@ echo ""
 GATEWAY_TOKEN="${GATEWAY_AUTH_PASSWORD:-pocketclaw}"
 DASHBOARD_URL="http://127.0.0.1:18789/#token=${GATEWAY_TOKEN}"
 
-# ── 保存 Token 到 workspace（AI 可读取，用于生成手机访问地址）──
-echo "$GATEWAY_TOKEN" > "$PROJECT_DIR/config/workspace/.gateway_token"
+# ── .gateway_token 由容器 entrypoint.sh 写入，此处不再重复写（避免文件锁冲突）──
 
 # ── 检测局域网 IP（用于手机访问）──
 LAN_IP=""
@@ -805,7 +804,14 @@ if [ -f "$ENC_FILE" ]; then
     echo "[安全] 明文配置已安全擦除"
 fi
 
-# 打开浏览器（URL含token，自动完成认证）
+# 等待服务就绪后打开浏览器
+echo "[信息] 等待服务就绪..."
+SVC_WAIT=0
+while ! curl -sf -o /dev/null http://127.0.0.1:18789/ 2>/dev/null; do
+    SVC_WAIT=$((SVC_WAIT + 2))
+    [ "$SVC_WAIT" -ge 30 ] && break
+    sleep 2
+done
 if command -v open &>/dev/null; then
     open "$DASHBOARD_URL"
 elif command -v xdg-open &>/dev/null; then

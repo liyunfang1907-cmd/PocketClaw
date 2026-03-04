@@ -296,7 +296,7 @@ if not exist "!ENC_FILE!" (
 
 :: ── 生成随机网关令牌 ──
 if not defined GATEWAY_AUTH_PASSWORD (
-    for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "-join (1..16 | ForEach-Object { [char[]]'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' | Get-Random })"`) do set "GATEWAY_AUTH_PASSWORD=%%t"
+    for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "-join (1..8 | ForEach-Object { [char[]]'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' | Get-Random })"`) do set "GATEWAY_AUTH_PASSWORD=%%t"
     if not defined GATEWAY_AUTH_PASSWORD set "GATEWAY_AUTH_PASSWORD=pc%RANDOM%%RANDOM%%RANDOM%%RANDOM%"
 )
 
@@ -602,8 +602,8 @@ REM 版本号已在更新检查阶段读取（PC_VER）
 set "LAN_IP="
 for /f "usebackq delims=" %%a in (`powershell -NoProfile -Command "try { (Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -ne $null } | Select-Object -First 1).IPv4Address.IPAddress } catch {}"`) do set "LAN_IP=%%a"
 if not "!LAN_IP!"=="" (
-    echo !LAN_IP!> "%PROJECT_DIR%\config\workspace\.host_ip"
-    echo !GATEWAY_AUTH_PASSWORD!> "%PROJECT_DIR%\config\workspace\.gateway_token"
+    echo !LAN_IP!> "%PROJECT_DIR%\config\workspace\.host_ip" 2>nul
+    REM .gateway_token 由容器 entrypoint.sh 写入，此处不再重复写（避免文件锁冲突）
     REM 确保防火墙放行 18789 端口（允许手机访问）
     netsh advfirewall firewall show rule name="PocketClaw" >nul 2>&1
     if !ERRORLEVEL! neq 0 (
@@ -616,30 +616,12 @@ echo   [OK] PocketClaw v!PC_VER! 已成功启动！
 echo ============================================
 echo.
 echo   控制面板: http://127.0.0.1:18789/#token=!GATEWAY_AUTH_PASSWORD!
-if not "!LAN_IP!"=="" (
-    echo   手机访问: http://!LAN_IP!:18789/mobile.html#token=!GATEWAY_AUTH_PASSWORD!
-    echo.
-    set "MOBILE_URL=http://!LAN_IP!:18789/mobile.html#token=!GATEWAY_AUTH_PASSWORD!"
-    echo   [扫码手机访问]
-    echo.
-    REM 生成二维码（优先容器内，失败则写临时脚本用主机 Python）
-    set "QR_OK=0"
-    docker exec pocketclaw python3 -c "import qrcode,sys;qr=qrcode.QRCode(border=1);qr.add_data(sys.argv[1]);qr.print_ascii()" "!MOBILE_URL!" 2>nul && set "QR_OK=1"
-    if "!QR_OK!"=="0" (
-        REM 写临时 Python 脚本避免 CMD 引号问题
-        echo import qrcode> "%TEMP%\pc_qr.py"
-        echo qr=qrcode.QRCode(border=1)>> "%TEMP%\pc_qr.py"
-        echo qr.add_data("!MOBILE_URL!")>> "%TEMP%\pc_qr.py"
-        echo qr.print_ascii()>> "%TEMP%\pc_qr.py"
-        python3 "%TEMP%\pc_qr.py" 2>nul && set "QR_OK=1"
-        if "!QR_OK!"=="0" python "%TEMP%\pc_qr.py" 2>nul && set "QR_OK=1"
-        del /q "%TEMP%\pc_qr.py" 2>nul
-    )
-    if "!QR_OK!"=="0" (
-        echo   ↑ 扫码失败，请复制上方 URL 在手机浏览器打开
-    )
-    echo.
-)
+if "!LAN_IP!"=="" goto :skip_mobile
+echo   手机访问: http://!LAN_IP!:18789/mobile.html#token=!GATEWAY_AUTH_PASSWORD!
+echo.
+set "MOBILE_URL=http://!LAN_IP!:18789/mobile.html#token=!GATEWAY_AUTH_PASSWORD!"
+call :gen_qr
+:skip_mobile
 echo.
 echo   停止服务: scripts\stop.bat
 echo   查看日志: scripts\logs.bat
@@ -650,8 +632,17 @@ echo          请等待约 10 秒后刷新页面即可
 echo ============================================
 echo.
 
-:: 打开浏览器
-echo [信息] 正在打开浏览器...
+:: 等待服务就绪后打开浏览器
+echo [信息] 等待服务就绪...
+set "SVC_WAIT=0"
+:svc_check
+curl.exe -sf -o nul http://127.0.0.1:18789/ 2>nul
+if !ERRORLEVEL! equ 0 goto :svc_ready
+set /a "SVC_WAIT+=2"
+if !SVC_WAIT! geq 30 goto :svc_ready
+timeout /t 2 /nobreak >nul
+goto :svc_check
+:svc_ready
 start "" "http://127.0.0.1:18789/#token=!GATEWAY_AUTH_PASSWORD!"
 echo.
 
@@ -666,4 +657,28 @@ if exist "!ENC_FILE!" (
 echo.
 echo 即使关闭此窗口，PocketClaw 仍在后台持续运行！
 pause >nul
+goto :eof
+
+
+REM ====== 子程序区（主流程不会执行到这里） ======
+
+:gen_qr
+echo   [扫码手机访问]
+echo.
+REM 优先用容器内 qrcode 模块生成
+docker exec pocketclaw python3 -c "import qrcode,sys;qr=qrcode.QRCode(border=1);qr.add_data(sys.argv[1]);qr.print_ascii()" "!MOBILE_URL!" 2>nul
+if !ERRORLEVEL! equ 0 goto :gen_qr_done
+REM 回退：写临时脚本用主机 Python
+echo import qrcode> "%TEMP%\pc_qr.py"
+echo qr=qrcode.QRCode(border=1)>> "%TEMP%\pc_qr.py"
+echo qr.add_data("!MOBILE_URL!")>> "%TEMP%\pc_qr.py"
+echo qr.print_ascii()>> "%TEMP%\pc_qr.py"
+set "QR_OK=0"
+python3 "%TEMP%\pc_qr.py" 2>nul && set "QR_OK=1"
+if "!QR_OK!"=="0" python "%TEMP%\pc_qr.py" 2>nul && set "QR_OK=1"
+del /q "%TEMP%\pc_qr.py" 2>nul
+if "!QR_OK!"=="0" echo   扫码失败，请复制上方 URL 在手机浏览器打开
+:gen_qr_done
+echo.
+goto :eof
 
