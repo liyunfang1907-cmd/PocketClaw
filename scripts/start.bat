@@ -322,9 +322,17 @@ del /q "%TEMP%\oc_ver.tmp" 2>nul
 
 if "!LATEST_VER!"=="" (
     echo [信息] 无法获取版本信息（网络问题），跳过检查
-) else if "!LATEST_VER!"=="!PC_VER!" (
-    echo [OK] 当前已是最新版本 v!PC_VER!
 ) else (
+    REM 语义化版本比较: 只有远程版本更大才提示更新
+    set "DO_UPDATE=0"
+    for /f "tokens=1-3 delims=." %%a in ("!LATEST_VER!") do ( set "R_MAJ=%%a" & set "R_MIN=%%b" & set "R_PAT=%%c" )
+    for /f "tokens=1-3 delims=." %%a in ("!PC_VER!") do ( set "L_MAJ=%%a" & set "L_MIN=%%b" & set "L_PAT=%%c" )
+    if !R_MAJ! gtr !L_MAJ! ( set "DO_UPDATE=1"
+    ) else if !R_MAJ! equ !L_MAJ! ( if !R_MIN! gtr !L_MIN! ( set "DO_UPDATE=1"
+    ) else if !R_MIN! equ !L_MIN! ( if !R_PAT! gtr !L_PAT! ( set "DO_UPDATE=1" ) ) )
+    if "!DO_UPDATE!"=="0" (
+        echo [OK] 当前已是最新版本 v!PC_VER!
+    ) else (
     echo.
     echo ============================================
     echo   [更新] 发现新版本 v!LATEST_VER!
@@ -471,6 +479,7 @@ if "!LATEST_VER!"=="" (
         echo   [信息] 已跳过更新，可随时访问 pocketclaw.cn 下载
     )
 )
+)
 echo.
 
 echo [信息] 正在检测 Docker Hub 连通性...
@@ -570,16 +579,18 @@ REM 确保容器已运行（跳过构建时容器可能未启动）
 docker compose up -d >nul 2>&1
 REM 等待容器就绪
 set "CONTAINER_WAIT=0"
+<nul set /p "=[信息] 等待容器就绪 "
 :container_wait
 docker exec pocketclaw echo OK >nul 2>&1
 if !ERRORLEVEL! equ 0 goto :container_ok
 set /a "CONTAINER_WAIT+=2"
-if !CONTAINER_WAIT! geq 30 (
+if !CONTAINER_WAIT! geq 120 (
     echo [错误] 容器启动超时，请检查 Docker Desktop 是否运行
     pause
     exit /b 1
 )
 timeout /t 2 /nobreak >nul
+<nul set /p "=."
 goto :container_wait
 :container_ok
 
