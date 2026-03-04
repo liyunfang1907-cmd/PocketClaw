@@ -1,0 +1,212 @@
+# ============================================================
+# GitHub Actions CI/CD — PocketClaw Release Pipeline (D4)
+#
+# 触发条件: 推送 v* 标签 或 手动触发
+# 流程: 编码校验 → ShellCheck → 构建 ZIP → 上传 COS → 创建 Release
+# ============================================================
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (如 1.2.7)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  COS_BUCKET: pocketclaw-1380766547
+  COS_REGION: ap-beijing
+
+jobs:
+  lint:
+    name: 编码与语法检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 检查 .bat 文件编码 (GBK+CRLF)
+        run: |
+          ERRORS=0
+          for f in $(find . -name '*.bat' -type f); do
+            # 检查 CRLF
+            if ! file "$f" | grep -q "CRLF"; then
+              echo "❌ $f: 缺少 CRLF 换行符"
+              ERRORS=$((ERRORS + 1))
+            fi
+            # 检查不含 chcp 65001
+            if grep -q "chcp 65001" "$f"; then
+              echo "❌ $f: 包含禁止的 chcp 65001"
+              ERRORS=$((ERRORS + 1))
+            fi
+          done
+          [ $ERRORS -eq 0 ] && echo "✅ 所有 .bat 文件编码正确"
+          exit $ERRORS
+
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './scripts'
+          severity: warning
+          additional_files: 'PocketClaw.command'
+
+      - name: Hadolint (Dockerfile)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile.custom
+          failure-threshold: warning
+
+      - name: 校验 providers.json
+        run: |
+          python3 -c "
+          import json, sys
+          with open('config/providers.json') as f:
+              data = json.load(f)
+          errors = []
+          for pid, p in data.items():
+              for key in ['label', 'baseUrl', 'defaultModel', 'models']:
+                  if key not in p:
+                      errors.append(f'{pid}: 缺少 {key}')
+              for m in p.get('models', []):
+                  if 'id' not in m or 'name' not in m:
+                      errors.append(f'{pid}: 模型缺少 id/name')
+          if errors:
+              print('\n'.join(errors))
+              sys.exit(1)
+          print(f'✅ {len(data)} 个提供商, 全部通过')
+          "
+
+  build:
+    name: 构建发布包
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 确定版本号
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VER="${{ github.event.inputs.version }}"
+          else
+            VER="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "版本: $VER"
+
+      - name: 更新 VERSION 文件
+        run: echo "${{ steps.version.outputs.version }}" > VERSION
+
+      - name: 构建 ZIP
+        run: |
+          VER="${{ steps.version.outputs.version }}"
+          ZIP_NAME="PocketClaw-v${VER}.zip"
+          
+          # 清理不需要的文件
+          rm -rf .git .github data/logs/* data/sessions/* data/credentials/*
+          rm -f .env secrets/master.key
+          
+          # 用 Python 打包（保证编码正确）
+          cd ..
+          python3 -c "
+          import zipfile, os
+          
+          zip_name = '${ZIP_NAME}'
+          src_dir = '${{ github.workspace }}'
+          
+          with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zf:
+              for root, dirs, files in os.walk(src_dir):
+                  # 跳过隐藏目录
+                  dirs[:] = [d for d in dirs if not d.startswith('.')]
+                  for f in files:
+                      if f.startswith('.'):
+                          continue
+                      fp = os.path.join(root, f)
+                      arcname = 'PocketClaw/' + os.path.relpath(fp, src_dir)
+                      zf.write(fp, arcname)
+          
+          size = os.path.getsize(zip_name)
+          print(f'✅ {zip_name} ({size//1024}KB)')
+          "
+          mv "$ZIP_NAME" "${{ github.workspace }}/"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-zip
+          path: "PocketClaw-v${{ steps.version.outputs.version }}.zip"
+
+  deploy:
+    name: 部署到 COS
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-zip
+
+      - name: 安装 coscmd
+        run: pip install coscmd
+
+      - name: 配置 COS
+        run: |
+          coscmd config \
+            -a "${{ secrets.COS_SECRET_ID }}" \
+            -s "${{ secrets.COS_SECRET_KEY }}" \
+            -b "${{ env.COS_BUCKET }}" \
+            -r "${{ env.COS_REGION }}"
+
+      - name: 上传到 COS
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          ZIP="PocketClaw-v${VER}.zip"
+          coscmd upload "$ZIP" "$ZIP"
+          echo "✅ 已上传 $ZIP 到 COS"
+
+      - name: 更新 version.json
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          ZIP="PocketClaw-v${VER}.zip"
+          SIZE=$(stat -c%s "$ZIP" 2>/dev/null || stat -f%z "$ZIP")
+          
+          cat > version.json <<EOF
+          {
+            "latest": "${VER}",
+            "download_url": "https://${COS_BUCKET}.cos.${COS_REGION}.myqcloud.com/${ZIP}",
+            "download_url_backup": "https://github.com/pocketclaw/pocketclaw/releases/download/v${VER}/${ZIP}",
+            "size": "${SIZE}",
+            "min_version": "1.0.0"
+          }
+          EOF
+          coscmd upload version.json version.json
+
+  release:
+    name: 创建 GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-zip
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "PocketClaw-v*.zip"
+          generate_release_notes: true
+          body: |
+            ## PocketClaw ${{ github.ref_name }}
+            
+            ### 安装方式
+            1. 下载 ZIP 解压到 U 盘
+            2. macOS: 双击 `PocketClaw.command`
+            3. Windows: 双击 `PocketClaw.bat`
+            
+            详见 [使用指南](https://pocketclaw.cn)

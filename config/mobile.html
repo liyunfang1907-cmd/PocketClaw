@@ -371,6 +371,62 @@ html, body {
 #debug-panel .err { color: #e94560; }
 #debug-panel .ok { color: #0f0; }
 #debug-panel .info { color: #8af; }
+
+/* ── U3: 暗色模式 ── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111B21;
+    --header-bg: #1F2C33;
+    --header-text: #E9EDEF;
+    --user-bubble: #005C4B;
+    --ai-bubble: #1F2C33;
+    --text-color: #E9EDEF;
+    --text-secondary: #8696A0;
+    --input-bg: #2A3942;
+    --input-border: #3B4A54;
+    --send-btn: #00A884;
+    --send-btn-active: #06CF9C;
+  }
+  body { background: var(--bg); }
+  #input-area { background: #1F2C33; border-top-color: #3B4A54; }
+  .bubble pre { background: #0B141A; }
+  .bubble th { background: rgba(255,255,255,0.08); }
+  .bubble td, .bubble th { border-color: #3B4A54; }
+  .sys-msg { background: rgba(255,255,255,0.06); }
+  .tool-msg { background: rgba(0,168,132,0.12); color: #06CF9C; }
+  #toast { background: rgba(255,255,255,0.85); color: #111; }
+}
+
+/* ── U5: 搜索栏 ── */
+#search-bar {
+  display: none;
+  padding: 6px 10px;
+  background: var(--header-bg);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+#search-bar.show { display: flex; gap: 8px; align-items: center; }
+#search-input {
+  flex: 1; border: none; border-radius: 16px;
+  padding: 6px 14px; font-size: 14px;
+  background: rgba(255,255,255,0.15); color: var(--header-text);
+  outline: none;
+}
+#search-input::placeholder { color: rgba(255,255,255,0.5); }
+#search-close {
+  background: none; border: none; color: var(--header-text);
+  font-size: 18px; cursor: pointer; padding: 4px;
+}
+.msg .bubble .highlight { background: rgba(255,255,0,0.35); border-radius: 2px; }
+
+/* ── N3: 导出/搜索按钮 ── */
+.header-actions { display: flex; gap: 6px; align-items: center; }
+.header-btn {
+  background: rgba(255,255,255,0.2); border: none; color: #fff;
+  font-size: 18px; width: 36px; height: 36px; border-radius: 50%;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.header-btn:active { background: rgba(255,255,255,0.4); }
 </style>
 </head>
 <body>
@@ -381,7 +437,17 @@ html, body {
       <div class="title" id="title-tap">🤖 PocketClaw</div>
       <div class="status" id="conn-status">连接中...</div>
     </div>
-    <button id="mode-toggle" title="切换文字/语音">⌨️</button>
+    <div class="header-actions">
+      <button class="header-btn" id="search-toggle" title="搜索消息">🔍</button>
+      <button class="header-btn" id="export-btn" title="导出聊天记录">💾</button>
+      <button id="mode-toggle" title="切换文字/语音">⌨️</button>
+    </div>
+  </div>
+
+  <!-- U5: 搜索栏 -->
+  <div id="search-bar">
+    <input id="search-input" type="text" placeholder="搜索消息..." autocomplete="off">
+    <button id="search-close">✖</button>
   </div>
 
   <!-- 调试面板（点击标题 3 次显示） -->
@@ -780,14 +846,16 @@ function extractText(msg) {
   return null;
 }
 
-// ── Markdown 渲染（增强版） ──
+// ── Markdown 渲染（Q3: 增强版 + XSS 安全加固） ──
 function renderMd(text) {
   if (!text) return '';
 
   // 提取代码块，防止内部内容被 Markdown 处理
   var codeBlocks = [];
   text = text.replace(/```(\w*)\n([\s\S]*?)```/g, function(m, lang, code) {
-    codeBlocks.push('<pre><code>' + code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</code></pre>');
+    var escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    var langAttr = lang ? ' data-lang="' + lang + '"' : '';
+    codeBlocks.push('<pre' + langAttr + '><code>' + escaped + '</code></pre>');
     return '\x00CB' + (codeBlocks.length - 1) + '\x00';
   });
 
@@ -814,8 +882,9 @@ function renderMd(text) {
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     // 删除线
     .replace(/~~(.+?)~~/g, '<del>$1</del>')
-    // 链接（XSS 防护: 仅允许 http/https 协议）
+    // 链接（XSS 防护: 仅允许 http/https 协议，sanitize属性）
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m, text, url) {
+      url = url.replace(/["'<>]/g, '');  // Q3: 额外XSS清理
       if (/^https?:\/\//i.test(url)) {
         return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + text + '</a>';
       }
@@ -1212,6 +1281,11 @@ function init() {
     DOM.modeToggle.style.display = 'none';
   }
 
+  // ── 初始化新功能 ──
+  initSearch();
+  initExport();
+  initResourceMonitor();
+
   // ── 页面可见性变化处理（iOS 切换 App 后重连） ──
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
@@ -1230,6 +1304,123 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ── U5: 搜索功能 ──
+function initSearch() {
+  const searchToggle = $('search-toggle');
+  const searchBar = $('search-bar');
+  const searchInput = $('search-input');
+  const searchClose = $('search-close');
+
+  searchToggle.addEventListener('click', () => {
+    searchBar.classList.toggle('show');
+    if (searchBar.classList.contains('show')) {
+      searchInput.focus();
+    } else {
+      searchInput.value = '';
+      clearHighlights();
+    }
+  });
+  searchClose.addEventListener('click', () => {
+    searchBar.classList.remove('show');
+    searchInput.value = '';
+    clearHighlights();
+  });
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.trim().toLowerCase();
+    clearHighlights();
+    if (!q) return;
+    const bubbles = DOM.messages.querySelectorAll('.bubble');
+    bubbles.forEach(b => {
+      const text = b.textContent || '';
+      if (text.toLowerCase().includes(q)) {
+        b.innerHTML = b.innerHTML.replace(
+          new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'),
+          '<span class="highlight">$1</span>'
+        );
+        b.closest('.msg').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  });
+}
+function clearHighlights() {
+  DOM.messages.querySelectorAll('.highlight').forEach(el => {
+    el.replaceWith(document.createTextNode(el.textContent));
+  });
+}
+
+// ── N3: 导出聊天记录 ──
+function initExport() {
+  const exportBtn = $('export-btn');
+  exportBtn.addEventListener('click', () => {
+    if (chatHistory.length === 0) {
+      showToast('没有聊天记录可导出', 2000);
+      return;
+    }
+    let md = '# PocketClaw 聊天记录\n\n';
+    md += '导出时间: ' + new Date().toLocaleString('zh-CN') + '\n\n---\n\n';
+    chatHistory.forEach(msg => {
+      const prefix = msg.role === 'user' ? '**👤 我**' : '**🤖 AI**';
+      md += prefix + ' (' + (msg.time || '') + ')\n\n' + msg.text + '\n\n---\n\n';
+    });
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'PocketClaw_chat_' + new Date().toISOString().slice(0,10) + '.md';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('聊天记录已导出', 2000);
+  });
+}
+
+// ── N4: 多会话支持 ──
+const SESSIONS_KEY = 'pocketclaw_sessions';
+function getSessions() {
+  try { return JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveSessions(sessions) {
+  try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions)); } catch(e) {}
+}
+function switchSession(key) {
+  // 保存当前会话
+  saveChatHistory();
+  // 切换 key
+  STATE.sessionKey = key;
+  // 尝试加载新会话历史
+  const sKey = STORAGE_KEY + '_' + key;
+  chatHistory.length = 0;
+  try {
+    const raw = localStorage.getItem(sKey);
+    if (raw && raw.charAt(0) === '[') {
+      JSON.parse(raw).forEach(m => chatHistory.push(m));
+    }
+  } catch(e) {}
+  // 重新渲染
+  DOM.messages.innerHTML = '';
+  chatHistory.forEach(msg => {
+    const div = document.createElement('div');
+    div.className = 'msg ' + msg.role;
+    const bubble = msg.role === 'user' ? escapeHtml(msg.text) : renderMd(msg.text);
+    div.innerHTML = '<div class="bubble">' + bubble + '</div><div class="msg-time">' + (msg.time || '') + '</div>';
+    DOM.messages.appendChild(div);
+  });
+  scrollToBottom();
+  showToast('已切换到会话: ' + key, 1500);
+}
+
+// ── N8: 系统资源监控（调试面板扩展）──
+function initResourceMonitor() {
+  // 每 30 秒更新一次内存信息
+  setInterval(() => {
+    if (window.performance && performance.memory) {
+      const mem = performance.memory;
+      const used = (mem.usedJSHeapSize / 1048576).toFixed(1);
+      const total = (mem.totalJSHeapSize / 1048576).toFixed(1);
+      dbg('MEM: ' + used + '/' + total + ' MB', 'info');
+    }
+  }, 30000);
+}
 
 // 仅在开发模式暴露内部 API（通过 URL 参数 ?dev=1 激活）
 if (new URLSearchParams(location.search).has('dev')) {

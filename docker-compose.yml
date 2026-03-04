@@ -59,6 +59,7 @@ services:
       start_period: 30s
 
     # ── 安全加固 ──
+    read_only: true                        # S4: 只读根文件系统
     security_opt:
       - no-new-privileges:true           # 禁止容器内提权
     cap_drop:
@@ -69,6 +70,8 @@ services:
     pids_limit: 128                      # 进程数上限，防止 fork 炸弹
     tmpfs:
       - /tmp:size=100M,noexec,nosuid     # 临时目录: 禁止执行、禁止 setuid
+      - /home/node/.npm:size=50M         # npm 运行时缓存
+      - /var/log:size=50M                # 日志目录
 
 networks:
   pocketclaw-net:

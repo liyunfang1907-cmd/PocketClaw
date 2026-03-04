@@ -53,10 +53,24 @@ if [ -z "$MASTER_PASS" ]; then
     exit 1
 fi
 
-# 密码长度校验（至少6个字符）
-if [ ${#MASTER_PASS} -lt 6 ]; then
-    red "[错误] 密码太短, 至少需要 6 个字符."
+# 密码长度校验（至少8个字符）+ S6: 强度校验
+if [ ${#MASTER_PASS} -lt 8 ]; then
+    red "[错误] 密码太短, 至少需要 8 个字符."
     exit 1
+fi
+
+# S6: 必须包含字母和数字
+if ! echo "$MASTER_PASS" | grep -q '[a-zA-Z]' || ! echo "$MASTER_PASS" | grep -q '[0-9]'; then
+    red "[错误] 密码必须同时包含字母和数字."
+    echo "       建议使用: 大小写字母 + 数字 + 特殊字符"
+    exit 1
+fi
+
+# 密码强度提示
+if [ ${#MASTER_PASS} -ge 12 ]; then
+    green "  密码强度: 强 ✓"
+elif [ ${#MASTER_PASS} -ge 8 ]; then
+    yellow "  密码强度: 中等（推荐 12 位以上）"
 fi
 
 # --------------- 确保 secrets 目录存在 ---------------

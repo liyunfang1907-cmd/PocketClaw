@@ -93,6 +93,7 @@ show_menu() {
     echo "    [3]  打开聊天页面"
     echo "    [4]  切换模型/API Key"
     echo "    [5]  备份数据"
+    echo "    [6]  查看日志"
     echo ""
     echo "    [0]  退出"
     echo ""
@@ -148,18 +149,42 @@ do_backup() {
     read -rp "  按回车返回菜单..." _
 }
 
+# U6: 日志查看
+do_logs() {
+    clear
+    echo ""
+    echo -e "  ${BOLD}── PocketClaw 日志 ──${RESET}"
+    echo ""
+    if command -v docker &>/dev/null && docker ps --filter "name=pocketclaw" --format "{{.Status}}" 2>/dev/null | grep -qi "up"; then
+        echo -e "  ${CYAN}[容器运行日志 - 最后 50 行]${RESET}"
+        echo "  ────────────────────────────────────────"
+        docker logs pocketclaw --tail 50 2>&1
+    else
+        echo -e "  ${YELLOW}容器未运行，显示构建日志${RESET}"
+    fi
+    if [ -f "$PROJECT_DIR/data/logs/build.log" ]; then
+        echo ""
+        echo -e "  ${CYAN}[构建日志 - 最后 30 行]${RESET}"
+        echo "  ────────────────────────────────────────"
+        tail -30 "$PROJECT_DIR/data/logs/build.log"
+    fi
+    echo ""
+    read -rp "  按回车返回菜单..." _
+}
+
 # ============================================================
 #  主循环
 # ============================================================
 while true; do
     show_menu
-    read -rp "  请选择 [0-5]: " CHOICE
+    read -rp "  请选择 [0-6]: " CHOICE
     case "$CHOICE" in
         1) do_start ;;
         2) do_stop ;;
         3) do_open ;;
         4) do_change_api ;;
         5) do_backup ;;
+        6) do_logs ;;
         0) echo ""; echo "  再见！"; exit 0 ;;
         *) echo "  无效选择"; sleep 1 ;;
     esac

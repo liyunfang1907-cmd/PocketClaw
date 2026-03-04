@@ -76,9 +76,29 @@ load_provider() {
     exit 1
   fi
 
-  export _PJ="$PROVIDERS_JSON" _PN="$PROVIDER" _MI="$MODEL_ID"
-  local _vars
-  _vars=$(python3 << 'PYEOF'
+  # P3: 优先用 jq（避免 Python 冷启动开销），回退到 Python
+  if command -v jq &>/dev/null; then
+    local _prov="$PROVIDER"
+    # 检查提供商是否存在
+    if ! jq -e ".\"$_prov\"" "$PROVIDERS_JSON" &>/dev/null; then
+      local _names
+      _names=$(jq -r 'keys | join(", ")' "$PROVIDERS_JSON")
+      echo "[PocketClaw] 错误: 未知的提供商 $_prov"
+      echo "[PocketClaw] 支持的提供商: $_names"
+      echo "[PocketClaw] 将使用默认配置 (zhipu)"
+      _prov="zhipu"
+    fi
+    BASE_URL=$(jq -r ".\"$_prov\".baseUrl" "$PROVIDERS_JSON")
+    PROVIDER_LABEL=$(jq -r ".\"$_prov\".label" "$PROVIDERS_JSON")
+    MODELS=$(jq -c ".\"$_prov\".models" "$PROVIDERS_JSON")
+    if [ -z "$MODEL_ID" ]; then
+      MODEL_ID=$(jq -r ".\"$_prov\".defaultModel" "$PROVIDERS_JSON")
+    fi
+  else
+    # 回退: Python 解析（Q2: 用逐行 read 替代 eval）
+    export _PJ="$PROVIDERS_JSON" _PN="$PROVIDER" _MI="$MODEL_ID"
+    local _output
+    _output=$(python3 << 'PYEOF'
 import json, os
 
 providers_file = os.environ.get("_PJ")
@@ -89,23 +109,32 @@ with open(providers_file) as f:
     providers = json.load(f)
 
 if provider_name not in providers:
-    print(f'echo "[PocketClaw] 错误: 未知的提供商 {provider_name}"')
     names = ", ".join(providers.keys())
-    print(f'echo "[PocketClaw] 支持的提供商: {names}"')
-    print('echo "[PocketClaw] 将使用默认配置 (zhipu)"')
+    import sys
+    print(f"WARN:[PocketClaw] 错误: 未知的提供商 {provider_name}", file=sys.stderr)
+    print(f"WARN:[PocketClaw] 支持的提供商: {names}", file=sys.stderr)
     provider_name = "zhipu"
 
 p = providers[provider_name]
 model_id = env_model if env_model else p["defaultModel"]
 
-print(f'BASE_URL="{p["baseUrl"]}"')
-print(f'MODEL_ID="{model_id}"')
-print(f'PROVIDER_LABEL="{p["label"]}"')
-print(f"MODELS='{json.dumps(p[\"models\"])}'")
+print(f'BASE_URL={p["baseUrl"]}')
+print(f'MODEL_ID={model_id}')
+print(f'PROVIDER_LABEL={p["label"]}')
+print(f"MODELS={json.dumps(p['models'])}")
 PYEOF
-  )
-  eval "$_vars"
-  unset _PJ _PN _MI
+    )
+    # Q2: 安全解析 —— 逐行 read 替代 eval
+    while IFS='=' read -r _key _val; do
+      case "$_key" in
+        BASE_URL) BASE_URL="$_val" ;;
+        MODEL_ID) MODEL_ID="$_val" ;;
+        PROVIDER_LABEL) PROVIDER_LABEL="$_val" ;;
+        MODELS) MODELS="$_val" ;;
+      esac
+    done <<< "$_output"
+    unset _PJ _PN _MI
+  fi
 }
 
 # ────────────────────────────────────────────────
@@ -327,6 +356,12 @@ main() {
   find_control_ui
   inject_mobile
   patch_gateway
+
+  # S1: 启动后掩码 .provider 文件中的 API Key（防止明文泄露）
+  if [[ -f "$WORKSPACE_PROVIDER" ]]; then
+    sed -i.bak 's/^API_KEY=.\{4\}\(.*\)/API_KEY=****\1/' "$WORKSPACE_PROVIDER" 2>/dev/null || true
+    rm -f "${WORKSPACE_PROVIDER}.bak" 2>/dev/null
+  fi
 
   # 启动 OpenClaw Gateway
   exec openclaw gateway --port "$GATEWAY_PORT" --verbose

@@ -165,6 +165,9 @@ echo ""
 echo "  Master Password 用于保护你的 API Key 等敏感信息。"
 echo "  每次启动 PocketClaw 时需要输入此密码来解密 .env 文件。"
 echo ""
+echo "  密码要求: 至少 8 位，需包含字母和数字"
+echo "  推荐: 12 位以上，混合大小写+数字+符号"
+echo ""
 
 ENCRYPT_SCRIPT="$SCRIPT_DIR/encrypt-secrets.sh"
 if [ -f "$ENCRYPT_SCRIPT" ]; then

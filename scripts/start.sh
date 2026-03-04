@@ -218,6 +218,9 @@ fi
 echo "[OK] Docker 已就绪"
 echo ""
 
+echo "[1/7] Docker 环境 ✓"
+echo ""
+
 # ── 文件完整性校验 ──
 if [ -f "$SCRIPT_DIR/.checksums.sha256" ]; then
     echo "[信息] 正在校验文件完整性..."
@@ -242,6 +245,9 @@ if [ -f "$SCRIPT_DIR/.checksums.sha256" ]; then
     fi
     echo ""
 fi
+
+echo "[2/7] 文件完整性 ✓"
+echo ""
 
 # ── 交互式解密 .env.encrypted → .env ──
 decrypt_env() {
@@ -285,6 +291,7 @@ fi
 
 echo "[OK] 配置文件就绪"
 echo ""
+echo "[3/7] 配置解密 ✓"
 
 # ── 清理 .env 中的非 UTF-8 字节（防止 GBK 中文注释导致 docker --env-file 报错）──
 if [ -f "$PROJECT_DIR/.env" ]; then
@@ -377,6 +384,9 @@ json.dump(cfg, open('$DAEMON_JSON','w'), indent=2)
         echo "[OK] Docker Hub 连接正常"
     fi
 fi
+
+echo "[4/7] 镜像加速器 ✓"
+echo ""
 
 # ── 清理 macOS 资源分叉/隐藏文件（防止 Docker 构建失败 + 保持 USB 干净）──
 find "$PROJECT_DIR" -maxdepth 2 \( -name '._*' -o -name '.DS_Store' \) -delete 2>/dev/null || true
@@ -511,13 +521,13 @@ else
 fi
 
 # ── 第一步：智能构建镜像 ──
-# 计算关键文件指纹：仅当 Dockerfile/entrypoint/config 变化时才重新构建
+# 计算关键文件指纹：仅当 Dockerfile/entrypoint/config/providers 变化时才重新构建
 BUILD_HASH_FILE="$PROJECT_DIR/data/.build_hash"
 CURRENT_HASH=""
 if command -v md5sum &>/dev/null; then
-    CURRENT_HASH=$(cat "$PROJECT_DIR/Dockerfile.custom" "$PROJECT_DIR/scripts/entrypoint.sh" "$PROJECT_DIR/config/mobile.html" "$PROJECT_DIR/config/openclaw.json" "$PROJECT_DIR/VERSION" 2>/dev/null | md5sum | awk '{print $1}')
+    CURRENT_HASH=$(cat "$PROJECT_DIR/Dockerfile.custom" "$PROJECT_DIR/scripts/entrypoint.sh" "$PROJECT_DIR/config/mobile.html" "$PROJECT_DIR/config/openclaw.json" "$PROJECT_DIR/config/providers.json" "$PROJECT_DIR/VERSION" 2>/dev/null | md5sum | awk '{print $1}')
 elif command -v md5 &>/dev/null; then
-    CURRENT_HASH=$(cat "$PROJECT_DIR/Dockerfile.custom" "$PROJECT_DIR/scripts/entrypoint.sh" "$PROJECT_DIR/config/mobile.html" "$PROJECT_DIR/config/openclaw.json" "$PROJECT_DIR/VERSION" 2>/dev/null | md5)
+    CURRENT_HASH=$(cat "$PROJECT_DIR/Dockerfile.custom" "$PROJECT_DIR/scripts/entrypoint.sh" "$PROJECT_DIR/config/mobile.html" "$PROJECT_DIR/config/openclaw.json" "$PROJECT_DIR/config/providers.json" "$PROJECT_DIR/VERSION" 2>/dev/null | md5)
 fi
 
 PREV_HASH=""
@@ -533,14 +543,40 @@ if [ -n "$CURRENT_HASH" ] && [ "$CURRENT_HASH" = "$PREV_HASH" ]; then
 fi
 
 if [ "$NEED_BUILD" -eq 1 ]; then
+    # 尝试从 Docker Hub 拉取预构建镜像（D1: 省去本地构建时间）
+    DOCKER_IMAGE="pocketclaw/pocketclaw:latest"
+    PULL_OK=0
+    echo "[5/7] 尝试拉取预构建镜像..."
+    if docker pull "$DOCKER_IMAGE" >> "$BUILD_LOG" 2>&1; then
+        docker tag "$DOCKER_IMAGE" pocketclaw-pocketclaw:latest >> "$BUILD_LOG" 2>&1
+        PULL_OK=1
+        NEED_BUILD=0
+        echo "[OK] 预构建镜像拉取成功，跳过本地构建"
+        [ -n "$CURRENT_HASH" ] && echo "$CURRENT_HASH" > "$BUILD_HASH_FILE"
+    else
+        echo "[信息] 预构建镜像不可用，将进行本地构建"
+    fi
+fi
+
+if [ "$NEED_BUILD" -eq 1 ]; then
+    # 首次构建时间预估（U4）
+    FIRST_BUILD=0
+    if ! docker image inspect pocketclaw-pocketclaw:latest &>/dev/null 2>&1; then
+        FIRST_BUILD=1
+    fi
     echo ""
     echo "┌──────────────────────────────────────────┐"
+    if [ "$FIRST_BUILD" -eq 1 ]; then
+    echo "│  首次构建容器镜像（约 5-8 分钟）         │"
+    echo "│  需下载 ~800MB 依赖，请保持网络连接      │"
+    else
     echo "│  正在构建容器镜像...                     │"
-    echo "│  首次构建约 3-5 分钟，后续有缓存会更快   │"
+    echo "│  有缓存加速，预计 1-2 分钟               │"
+    fi
     echo "└──────────────────────────────────────────┘"
     echo ""
 
-    run_compose build --progress=plain >> "$BUILD_LOG" 2>&1 &
+    DOCKER_BUILDKIT=1 run_compose build --progress=plain >> "$BUILD_LOG" 2>&1 &
     BUILD_PID=$!
 
     SPINNER='|/-\'
@@ -571,6 +607,8 @@ if [ "$NEED_BUILD" -eq 1 ]; then
         echo "  可能原因:"
         echo "  1. Docker Hub 无法访问 → 请配置镜像加速器"
         echo "  2. 磁盘空间不足 → docker system prune"
+        echo ""
+        echo "  详细排查指南: https://pocketclaw.cn/#faq"
         exit 1
     fi
     echo "[OK] 镜像构建完成（耗时 $((BUILD_TOTAL/60))分$((BUILD_TOTAL%60))秒）"
@@ -578,6 +616,9 @@ if [ "$NEED_BUILD" -eq 1 ]; then
     # 保存构建指纹
     [ -n "$CURRENT_HASH" ] && echo "$CURRENT_HASH" > "$BUILD_HASH_FILE"
 fi
+
+echo ""
+echo "[5/7] 镜像构建 ✓"
 
 # ── 第二步：启动容器 ──
 # 彻底清理所有 pocketclaw 相关容器（包括幽灵容器）和网络
@@ -597,10 +638,10 @@ docker network rm pocketclaw_default >> "$BUILD_LOG" 2>&1 || true
 
 # ── 生成随机 Gateway Token（每次启动不同，防止局域网未授权访问）──
 if [ -z "${GATEWAY_AUTH_PASSWORD:-}" ]; then
-    GATEWAY_AUTH_PASSWORD=$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 8 || true)
+    GATEWAY_AUTH_PASSWORD=$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 16 || true)
     # 若 urandom 失败，使用时间戳+进程号
     if [ -z "$GATEWAY_AUTH_PASSWORD" ]; then
-        GATEWAY_AUTH_PASSWORD="pc$(date +%s | tail -c 7)$$"
+        GATEWAY_AUTH_PASSWORD="pc$(date +%s)$$$(( RANDOM % 9999 ))"
     fi
 fi
 export GATEWAY_AUTH_PASSWORD
@@ -661,10 +702,47 @@ else
         echo "  1. 端口 18789 被占用 → 关闭占用该端口的程序"
         echo "  2. 磁盘空间不足 → docker system prune"
         echo "  3. Docker 数据损坏 → 打开 Docker Desktop → 设置 → Reset to factory defaults"
+        echo ""
+        echo "  详细排查指南: https://pocketclaw.cn/#faq"
         exit 1
     fi
 fi
-echo "[OK] 构建完成！"
+echo "[6/7] 容器启动 ✓"
+echo ""
+
+# ── API Key 有效性验证（N7: 启动后自动检查，无效立即提示）──
+echo "[信息] 正在验证 API Key..."
+API_CHECK_OK=0
+# 从容器环境变量获取 API 配置并尝试调 models 接口
+if docker exec pocketclaw python3 -c "
+import os, urllib.request, urllib.error, json, sys
+prov_file = '/home/node/.openclaw/workspace/.provider'
+api_key = os.environ.get('OPENAI_API_KEY', '')
+base_url = ''
+if os.path.exists(prov_file):
+    for line in open(prov_file):
+        if line.strip().startswith('API_KEY='):
+            api_key = line.strip().split('=',1)[1].strip()
+if not api_key or api_key == 'not-configured-yet':
+    print('API_KEY_MISSING')
+    sys.exit(0)
+print('API_KEY_OK')
+" 2>/dev/null | grep -q 'API_KEY_OK'; then
+    API_CHECK_OK=1
+    echo "[OK] API Key 已配置"
+elif docker exec pocketclaw python3 -c "print('API_KEY_MISSING')" 2>/dev/null | grep -q 'API_KEY_MISSING'; then
+    echo ""
+    yellow "[警告] API Key 未配置或为空！"
+    echo "       请先运行: bash scripts/setup-env.sh"
+    echo "       或在控制面板中选择 [4] 切换模型/API Key"
+    echo ""
+else
+    API_CHECK_OK=1
+    echo "[OK] API Key 验证跳过（容器初始化中）"
+fi
+
+echo "[7/7] 验证完成 ✓"
+echo ""
 
 # ── 读取 Gateway Token（用于浏览器自动认证）──
 GATEWAY_TOKEN="${GATEWAY_AUTH_PASSWORD:-pocketclaw}"

@@ -65,6 +65,100 @@ if [[ "${1:-}" == "--init" ]]; then
     exit 0
 fi
 
+# ── Q4: ShellCheck 静态分析（可选）──
+if [[ "${1:-}" == "--lint" ]]; then
+    echo ""
+    echo "╔══════════════════════════════════════╗"
+    echo "║   PocketClaw 代码静态检查           ║"
+    echo "╚══════════════════════════════════════╝"
+    echo ""
+
+    LINT_ERRORS=0
+
+    # ShellCheck
+    if command -v shellcheck &>/dev/null; then
+        echo "── ShellCheck (.sh 文件) ──"
+        for f in "${FILES[@]}"; do
+            [[ "$f" != *.sh ]] && continue
+            [[ ! -f "$PROJECT_DIR/$f" ]] && continue
+            if shellcheck -S warning "$PROJECT_DIR/$f" 2>/dev/null; then
+                green "  ✓ $f"
+            else
+                LINT_ERRORS=$((LINT_ERRORS + 1))
+            fi
+        done
+        echo ""
+    else
+        yellow "  [跳过] ShellCheck 未安装 (brew install shellcheck)"
+    fi
+
+    # hadolint (Dockerfile)
+    if command -v hadolint &>/dev/null; then
+        echo "── hadolint (Dockerfile) ──"
+        if hadolint "$PROJECT_DIR/Dockerfile.custom" 2>/dev/null; then
+            green "  ✓ Dockerfile.custom"
+        else
+            LINT_ERRORS=$((LINT_ERRORS + 1))
+        fi
+        echo ""
+    else
+        yellow "  [跳过] hadolint 未安装 (brew install hadolint)"
+    fi
+
+    # Q5: providers.json schema 校验
+    echo "── providers.json 校验 ──"
+    if [ -f "$PROJECT_DIR/config/providers.json" ]; then
+        PJSON_ERRORS=$(python3 << 'PYEOF'
+import json, sys
+try:
+    with open(sys.argv[1] if len(sys.argv) > 1 else '/dev/stdin') as f:
+        providers = json.load(f)
+    errors = []
+    required_fields = ['label', 'baseUrl', 'defaultModel', 'models']
+    for name, cfg in providers.items():
+        for field in required_fields:
+            if field not in cfg:
+                errors.append(f"  {name}: 缺少必填字段 '{field}'")
+        if 'models' in cfg:
+            if not isinstance(cfg['models'], list):
+                errors.append(f"  {name}: 'models' 应为数组")
+            else:
+                for i, m in enumerate(cfg['models']):
+                    if 'id' not in m:
+                        errors.append(f"  {name}.models[{i}]: 缺少 'id'")
+                    if 'name' not in m:
+                        errors.append(f"  {name}.models[{i}]: 缺少 'name'")
+    if errors:
+        for e in errors:
+            print(e)
+        sys.exit(1)
+    print(f"  ✓ {len(providers)} 个提供商配置正确")
+    sys.exit(0)
+except json.JSONDecodeError as e:
+    print(f"  JSON 解析错误: {e}")
+    sys.exit(1)
+PYEOF
+        "$PROJECT_DIR/config/providers.json" 2>&1)
+        if [ $? -eq 0 ]; then
+            green "$PJSON_ERRORS"
+        else
+            red "$PJSON_ERRORS"
+            LINT_ERRORS=$((LINT_ERRORS + 1))
+        fi
+    else
+        yellow "  providers.json 不存在"
+    fi
+
+    echo ""
+    if [ $LINT_ERRORS -eq 0 ]; then
+        green "[通过] 代码检查全部通过 ✓"
+    else
+        yellow "[警告] 发现 $LINT_ERRORS 处问题需要关注"
+    fi
+    echo ""
+    exit 0
+fi
+
 # ── 验证完整性 ──
 echo ""
 echo "╔══════════════════════════════════════╗"

@@ -13,10 +13,13 @@ WORKDIR /app
 RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
     sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list 2>/dev/null || true
 
-# 安装系统依赖（最小化安装，减少攻击面）
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 安装系统依赖（最小化安装，减少攻击面）+ P2: BuildKit 缓存挂载
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
+    jq \
     openssl \
     openssh-client \
     ca-certificates \
@@ -25,11 +28,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-venv \
-    && rm -rf /var/lib/apt/lists/* \
     && ln -sf /usr/bin/python3 /usr/bin/python
 
-# 安装 Python 文件处理库（支持 Word/PDF/Excel 读写）
-RUN pip3 install --no-cache-dir --break-system-packages \
+# 安装 Python 文件处理库（支持 Word/PDF/Excel 读写）+ P2: pip 缓存挂载
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip3 install --no-cache-dir --break-system-packages \
     python-docx \
     pdfplumber \
     openpyxl \
@@ -54,8 +57,9 @@ RUN git config --global url.https://github.com/.insteadOf ssh://git@github.com/ 
 # docker compose build --build-arg CACHE_DATE=$(date +%s)
 ARG CACHE_DATE=0
 
-# 优先从官方 npm 安装（获取最新版），失败则回退到国内镜像
-RUN npm config set registry https://registry.npmmirror.com && \
+# 优先从官方 npm 安装（获取最新版），失败则回退到国内镜像 + P2: npm 缓存挂载
+RUN --mount=type=cache,target=/root/.npm \
+    npm config set registry https://registry.npmmirror.com && \
     (npm install -g openclaw@latest --registry https://registry.npmjs.org 2>/dev/null || \
      npm install -g openclaw@latest)
 

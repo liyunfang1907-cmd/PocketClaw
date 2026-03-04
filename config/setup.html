@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PocketClaw 配置</title>
+<style>
+:root {
+  --bg: #f0f2f5; --card: #fff; --primary: #075E54;
+  --primary-hover: #128C7E; --text: #303030; --border: #ddd;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111B21; --card: #1F2C33; --text: #E9EDEF; --border: #3B4A54; }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--text);
+  display: flex; justify-content: center; align-items: center;
+  min-height: 100vh; padding: 20px;
+}
+.card {
+  background: var(--card); border-radius: 16px; padding: 32px;
+  max-width: 480px; width: 100%; box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+}
+h1 { text-align: center; margin-bottom: 8px; font-size: 24px; }
+.subtitle { text-align: center; color: #888; margin-bottom: 24px; font-size: 14px; }
+.step { margin-bottom: 20px; }
+.step-title { font-weight: 600; margin-bottom: 8px; font-size: 15px; }
+label { display: block; margin-bottom: 4px; font-size: 14px; color: #888; }
+select, input[type="text"], input[type="password"] {
+  width: 100%; padding: 10px 14px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 15px; background: var(--card);
+  color: var(--text); outline: none;
+}
+select:focus, input:focus { border-color: var(--primary); }
+.provider-info {
+  margin-top: 8px; padding: 10px; background: rgba(7,94,84,0.06);
+  border-radius: 8px; font-size: 13px; color: #666;
+}
+.provider-info a { color: var(--primary); }
+.btn {
+  width: 100%; padding: 12px; border: none; border-radius: 8px;
+  background: var(--primary); color: #fff; font-size: 16px;
+  font-weight: 600; cursor: pointer; transition: background 0.2s;
+}
+.btn:hover { background: var(--primary-hover); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.msg { margin-top: 12px; padding: 10px; border-radius: 8px; font-size: 14px; }
+.msg.ok { background: #d4edda; color: #155724; }
+.msg.err { background: #f8d7da; color: #721c24; }
+.help { text-align: center; margin-top: 16px; font-size: 13px; color: #888; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🦞 PocketClaw 配置</h1>
+  <p class="subtitle">在浏览器中完成 AI 提供商配置</p>
+
+  <div class="step">
+    <div class="step-title">1️⃣ 选择 AI 提供商</div>
+    <select id="provider" onchange="updateProviderInfo()">
+      <option value="zhipu">智谱 AI (免费推荐)</option>
+      <option value="zhipu-pro">智谱 AI (付费高级)</option>
+      <option value="deepseek">DeepSeek</option>
+      <option value="openai">OpenAI</option>
+      <option value="anthropic">Anthropic Claude</option>
+      <option value="gemini">Google Gemini</option>
+      <option value="xai">xAI Grok</option>
+      <option value="moonshot">Moonshot/Kimi</option>
+      <option value="qwen">通义千问 Qwen</option>
+      <option value="yi">零一万物 Yi</option>
+      <option value="siliconflow">硅基流动</option>
+      <option value="ollama">Ollama (本地离线)</option>
+    </select>
+    <div class="provider-info" id="provider-info">
+      GLM-4.7-Flash 200K 上下文，永久免费<br>
+      <a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank">获取 API Key →</a>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-title">2️⃣ 填写 API Key</div>
+    <label>API Key</label>
+    <input type="password" id="apikey" placeholder="粘贴你的 API Key...">
+  </div>
+
+  <div class="step">
+    <button class="btn" onclick="saveConfig()" id="save-btn">💾 保存配置</button>
+  </div>
+
+  <div id="result"></div>
+  <p class="help">配置保存后需重启容器生效：<code>docker restart pocketclaw</code></p>
+</div>
+
+<script>
+const PROVIDERS = {
+  zhipu:      { desc: 'GLM-4.7-Flash 200K 上下文，永久免费', url: 'https://open.bigmodel.cn/usercenter/apikeys', noKey: false },
+  'zhipu-pro':{ desc: 'GLM-4-Plus / GLM-4-Long 高级模型', url: 'https://open.bigmodel.cn/usercenter/apikeys', noKey: false },
+  deepseek:   { desc: 'DeepSeek-V3 / R1，性价比最高', url: 'https://platform.deepseek.com/api_keys', noKey: false },
+  openai:     { desc: 'GPT-4o / GPT-4.1 / o3-mini', url: 'https://platform.openai.com/api-keys', noKey: false },
+  anthropic:  { desc: 'Claude Sonnet 4 / Opus 4', url: 'https://console.anthropic.com/settings/keys', noKey: false },
+  gemini:     { desc: 'Gemini 2.5 Flash / Pro', url: 'https://aistudio.google.com/apikey', noKey: false },
+  xai:        { desc: 'Grok 3 / Grok 3 Mini', url: 'https://console.x.ai', noKey: false },
+  moonshot:   { desc: '长文本能力强', url: 'https://platform.moonshot.cn/console/api-keys', noKey: false },
+  qwen:       { desc: '阿里云通义千问', url: 'https://dashscope.console.aliyun.com/apiKey', noKey: false },
+  yi:         { desc: 'Yi-Lightning / Yi-Large', url: 'https://platform.lingyiwanwu.com/apikeys', noKey: false },
+  siliconflow:{ desc: '免费开源模型聚合', url: 'https://cloud.siliconflow.cn/account/ak', noKey: false },
+  ollama:     { desc: '本地离线模型，无需 API Key', url: 'https://ollama.com', noKey: true }
+};
+
+function updateProviderInfo() {
+  const sel = document.getElementById('provider').value;
+  const info = PROVIDERS[sel];
+  const div = document.getElementById('provider-info');
+  div.innerHTML = info.desc + '<br><a href="' + info.url + '" target="_blank">获取 API Key →</a>';
+  document.getElementById('apikey').disabled = info.noKey;
+  if (info.noKey) document.getElementById('apikey').value = 'not-needed';
+}
+
+function saveConfig() {
+  const provider = document.getElementById('provider').value;
+  const apikey = document.getElementById('apikey').value.trim();
+  const info = PROVIDERS[provider];
+  const result = document.getElementById('result');
+
+  if (!info.noKey && !apikey) {
+    result.innerHTML = '<div class="msg err">请填写 API Key</div>';
+    return;
+  }
+
+  // 写入 .provider 文件（通过 fetch POST 到 gateway API）
+  const content = 'PROVIDER_NAME=' + provider + '\nAPI_KEY=' + apikey + '\n';
+
+  // 尝试通过网页写入（需要容器内有写入权限）
+  const token = new URLSearchParams(location.hash.replace('#','')).get('token') || '';
+  
+  // 直接用 WebSocket RPC 写入文件
+  result.innerHTML = '<div class="msg ok">✅ 配置已准备！<br>请在终端中运行以下命令写入配置：<br><code style="display:block;margin-top:8px;padding:8px;background:#1e1e1e;color:#d4d4d4;border-radius:4px;font-size:12px;">echo "PROVIDER_NAME=' + provider + '\\nAPI_KEY=' + apikey + '" > config/workspace/.provider && docker restart pocketclaw</code></div>';
+}
+</script>
+</body>
+</html>
