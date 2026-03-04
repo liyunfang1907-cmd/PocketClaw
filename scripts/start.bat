@@ -307,6 +307,7 @@ set "VERSION_API=https://pocketclaw-1380766547.cos.ap-beijing.myqcloud.com/versi
 set "VERSION_API_BACKUP=https://raw.githubusercontent.com/pocketclaw/pocketclaw/main/version.json"
 set "LATEST_VER="
 set "DOWNLOAD_URL="
+set "DOWNLOAD_URL_BACKUP="
 powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $u='%VERSION_API%'; try { $j = (Invoke-WebRequest -Uri $u -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop).Content | ConvertFrom-Json } catch { try { $j = (Invoke-WebRequest -Uri '%VERSION_API_BACKUP%' -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop).Content | ConvertFrom-Json } catch { $j=$null } }; if($j){ Write-Host $j.latest; Write-Host $j.download_url; if($j.download_url_backup){Write-Host $j.download_url_backup} }" > "%TEMP%\oc_ver.tmp" 2>nul
 for /f "usebackq delims=" %%a in ("%TEMP%\oc_ver.tmp") do (
     if "!LATEST_VER!"=="" (
@@ -368,7 +369,7 @@ if "!LATEST_VER!"=="" (
                 if exist "!PAYLOAD!\scripts" (
                     xcopy /s /y /q "!PAYLOAD!\scripts\*" "%PROJECT_DIR%\scripts\" >nul 2>&1
                 )
-                REM 复制 config/ 下所有文件（mobile.html, openclaw.json）
+                REM 复制 config/ 下所有文件
                 if exist "!PAYLOAD!\config" (
                     for %%c in ("!PAYLOAD!\config\*.*") do (
                         copy /y "%%c" "%PROJECT_DIR%\config\" >nul 2>&1
@@ -403,75 +404,72 @@ if "!LATEST_VER!"=="" (
             powershell -NoProfile -Command "try { Invoke-WebRequest -Uri '!DOWNLOAD_URL_BACKUP!' -OutFile '!UPDATE_ZIP!' -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop; Write-Host OK } catch { Write-Host FAIL }" > "%TEMP%\oc_dl.tmp" 2>nul
             set /p DL_RESULT=<"%TEMP%\oc_dl.tmp"
             del /q "%TEMP%\oc_dl.tmp" 2>nul
-            if "!DL_RESULT!"=="OK" goto :dl_ok_backup
-            echo [错误] 下载失败，请检查网络或手动访问 pocketclaw.cn 下载
+            if "!DL_RESULT!"=="OK" (
+                echo [更新] 备用源下载完成，正在解压...
+                if exist "!UPDATE_DIR!" rd /s /q "!UPDATE_DIR!" 2>nul
+                powershell -NoProfile -Command "Expand-Archive -Path '!UPDATE_ZIP!' -DestinationPath '!UPDATE_DIR!' -Force" 2>nul
+                echo [更新] 正在安装更新...
+                REM 查找解压后的 PocketClaw 目录
+                set "PAYLOAD="
+                if exist "!UPDATE_DIR!\PocketClaw" set "PAYLOAD=!UPDATE_DIR!\PocketClaw"
+                if "!PAYLOAD!"=="" (
+                    for /d %%d in ("!UPDATE_DIR!\*") do (
+                        if exist "%%d\VERSION" set "PAYLOAD=%%d"
+                    )
+                )
+                if "!PAYLOAD!"=="" (
+                    echo [错误] 更新包格式异常，请手动更新
+                ) else (
+                    REM 复制根目录文件（不覆盖 .env）
+                    for %%f in ("!PAYLOAD!\*.*") do (
+                        set "UFNAME=%%~nxf"
+                        if /i not "!UFNAME!"==".env" (
+                            copy /y "%%f" "%PROJECT_DIR%\" >nul 2>&1
+                        )
+                    )
+                    REM 复制 scripts/
+                    if exist "!PAYLOAD!\scripts" (
+                        xcopy /s /y /q "!PAYLOAD!\scripts\*" "%PROJECT_DIR%\scripts\" >nul 2>&1
+                    )
+                    REM 复制 config/ 下所有文件
+                    if exist "!PAYLOAD!\config" (
+                        for %%c in ("!PAYLOAD!\config\*.*") do (
+                            copy /y "%%c" "%PROJECT_DIR%\config\" >nul 2>&1
+                        )
+                    )
+                    REM 复制 config/workspace/ 下的 .md 文件
+                    if exist "!PAYLOAD!\config\workspace" (
+                        for %%w in ("!PAYLOAD!\config\workspace\*.md") do (
+                            copy /y "%%w" "%PROJECT_DIR%\config\workspace\" >nul 2>&1
+                        )
+                    )
+                    REM 复制 config/workspace/skills/
+                    if exist "!PAYLOAD!\config\workspace\skills" (
+                        xcopy /s /y /q "!PAYLOAD!\config\workspace\skills\*" "%PROJECT_DIR%\config\workspace\skills\" >nul 2>&1
+                    )
+                    set /p NEW_VER=<"!PAYLOAD!\VERSION"
+                    set "PC_VER=!NEW_VER!"
+                    REM 清除构建哈希，强制重新构建新版本镜像
+                    if exist "%PROJECT_DIR%\data\.build_hash" del /q "%PROJECT_DIR%\data\.build_hash"
+                    echo.
+                    echo ============================================
+                    echo   [OK] 更新完成！v!PC_VER!
+                    echo        正在继续启动新版本...
+                    echo ============================================
+                    echo.
+                )
+                REM 清理临时文件
+                rd /s /q "!UPDATE_DIR!" 2>nul
+                del /q "!UPDATE_ZIP!" 2>nul
+            ) else (
+                echo [错误] 下载失败，请检查网络或手动访问 pocketclaw.cn 下载
+            )
         ) else (
             echo [错误] 下载失败，请检查网络或手动访问 pocketclaw.cn 下载
         )
     ) else (
         echo   [信息] 已跳过更新，可随时访问 pocketclaw.cn 下载
     )
-goto :update_done
-
-:dl_ok_backup
-echo [更新] 备用源下载完成，正在解压...
-if exist "!UPDATE_DIR!" rd /s /q "!UPDATE_DIR!" 2>nul
-powershell -NoProfile -Command "Expand-Archive -Path '!UPDATE_ZIP!' -DestinationPath '!UPDATE_DIR!' -Force" 2>nul
-echo [更新] 正在安装更新...
-REM 查找解压后的 PocketClaw 目录
-set "PAYLOAD="
-if exist "!UPDATE_DIR!\PocketClaw" set "PAYLOAD=!UPDATE_DIR!\PocketClaw"
-if "!PAYLOAD!"=="" (
-    for /d %%d in ("!UPDATE_DIR!\*") do (
-        if exist "%%d\VERSION" set "PAYLOAD=%%d"
-    )
-)
-if "!PAYLOAD!"=="" (
-    echo [错误] 更新包格式异常，请手动更新
-) else (
-    REM 复制根目录文件（不覆盖 .env）
-    for %%f in ("!PAYLOAD!\*.*") do (
-        set "UFNAME=%%~nxf"
-        if /i not "!UFNAME!"==".env" (
-            copy /y "%%f" "%PROJECT_DIR%\" >nul 2>&1
-        )
-    )
-    REM 复制 scripts/
-    if exist "!PAYLOAD!\scripts" (
-        xcopy /s /y /q "!PAYLOAD!\scripts\*" "%PROJECT_DIR%\scripts\" >nul 2>&1
-    )
-    REM 复制 config/ 下所有文件（mobile.html, openclaw.json）
-    if exist "!PAYLOAD!\config" (
-        for %%c in ("!PAYLOAD!\config\*.*") do (
-            copy /y "%%c" "%PROJECT_DIR%\config\" >nul 2>&1
-        )
-    )
-    REM 复制 config/workspace/ 下的 .md 文件
-    if exist "!PAYLOAD!\config\workspace" (
-        for %%w in ("!PAYLOAD!\config\workspace\*.md") do (
-            copy /y "%%w" "%PROJECT_DIR%\config\workspace\" >nul 2>&1
-        )
-    )
-    REM 复制 config/workspace/skills/
-    if exist "!PAYLOAD!\config\workspace\skills" (
-        xcopy /s /y /q "!PAYLOAD!\config\workspace\skills\*" "%PROJECT_DIR%\config\workspace\skills\" >nul 2>&1
-    )
-    set /p NEW_VER=<"!PAYLOAD!\VERSION"
-    set "PC_VER=!NEW_VER!"
-    REM 清除构建哈希，强制重新构建新版本镜像
-    if exist "%PROJECT_DIR%\data\.build_hash" del /q "%PROJECT_DIR%\data\.build_hash"
-    echo.
-    echo ============================================
-    echo   [OK] 更新完成！v!PC_VER!
-    echo        正在继续启动新版本...
-    echo ============================================
-    echo.
-)
-REM 清理临时文件
-rd /s /q "!UPDATE_DIR!" 2>nul
-del /q "!UPDATE_ZIP!" 2>nul
-
-:update_done
 )
 echo.
 
