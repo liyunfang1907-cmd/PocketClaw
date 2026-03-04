@@ -359,11 +359,15 @@ html, body {
   position: fixed;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%) scale(0.8);
-  background: rgba(0,0,0,0.75);
+  background: rgba(0,0,0,0.85);
   color: #fff;
-  padding: 12px 24px;
+  padding: 14px 24px;
   border-radius: 10px;
   font-size: 14px;
+  line-height: 1.6;
+  max-width: 85vw;
+  text-align: left;
+  white-space: pre-line;
   z-index: 1000;
   pointer-events: none;
   opacity: 0;
@@ -567,7 +571,7 @@ html, body {
 
   // 延迟检查主脚本是否加载成功
   setTimeout(function() {
-    if (!window._PC) {
+    if (!window._PC_LOADED) {
       window._dbg('MAIN SCRIPT NOT LOADED!', 'err');
       window._dbg('UA: ' + navigator.userAgent, 'info');
       window._dbg('URL: ' + location.href, 'info');
@@ -584,6 +588,8 @@ html, body {
 /* ── PocketClaw Mobile Client ── */
 (function() {
 'use strict';
+
+window._PC_LOADED = true;  // 标记主脚本已加载（供调试面板检测）
 
 var dbg = window._dbg || function(){};
 
@@ -606,6 +612,8 @@ const STATE = {
   recognition: null,
   reconnectTimer: null,
   backoffMs: 800,
+  retryCount: 0,
+  firstConnectTime: 0,
 };
 
 // ── DOM 缓存 ──
@@ -669,6 +677,45 @@ function timeStr() {
   return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
 }
 
+// ── 内嵌浏览器检测（微信/QQ 等扫码工具的内置浏览器可能无法建立 WebSocket） ──
+function isInAppBrowser() {
+  const ua = navigator.userAgent;
+  return /MicroMessenger|WeChat|QQ\/|Weibo|Alipay|DingTalk|BytedanceWebview|TikTok|baiduboxapp/i.test(ua);
+}
+function getInAppName() {
+  const ua = navigator.userAgent;
+  if (/MicroMessenger|WeChat/i.test(ua)) return '微信';
+  if (/QQ\//i.test(ua)) return 'QQ';
+  if (/Weibo/i.test(ua)) return '微博';
+  if (/Alipay/i.test(ua)) return '支付宝';
+  if (/DingTalk/i.test(ua)) return '钉钉';
+  if (/BytedanceWebview|TikTok/i.test(ua)) return '抖音';
+  if (/baiduboxapp/i.test(ua)) return '百度';
+  return '当前应用';
+}
+
+// ── 连接排障提示 ──
+function showConnectHelp() {
+  const tips = [];
+  if (isInAppBrowser()) {
+    tips.push('⚠️ 检测到' + getInAppName() + '内置浏览器，可能影响连接');
+    tips.push('→ 请点击右上角菜单 → 在浏览器中打开');
+  }
+  tips.push('📶 请确认手机和电脑在同一 WiFi 下');
+  tips.push('🔄 尝试关闭页面重新扫码');
+  tips.push('📋 或复制地址栏链接到系统浏览器打开');
+  const msg = tips.join('\n');
+  showToast(msg, 8000);
+  dbg('Show help: inApp=' + isInAppBrowser() + ' retries=' + STATE.retryCount, 'info');
+}
+
+// ── HTTP 连通性预检（WebSocket 连接前先确认 HTTP 可达） ──
+function httpPreCheck() {
+  return fetch(location.origin + '/health', { mode: 'no-cors', cache: 'no-store' })
+    .then(function() { return true; })
+    .catch(function() { return false; });
+}
+
 // ── WebSocket 连接 ──
 function wsConnect() {
   if (STATE.ws) { try { STATE.ws.close(); } catch(e){} }
@@ -676,11 +723,33 @@ function wsConnect() {
   clearTimeout(STATE.connectTimer);
   STATE.connectSent = false;
   STATE.connectNonce = null;
+  STATE.retryCount++;
+  if (!STATE.firstConnectTime) STATE.firstConnectTime = Date.now();
 
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const url = proto + '//' + location.host;
-  setStatus('连接中...', '');
-  dbg('WS connecting → ' + url);
+  const retryLabel = STATE.retryCount > 1 ? '(第' + STATE.retryCount + '次)' : '';
+  setStatus('连接中...' + retryLabel, '');
+  dbg('WS connecting → ' + url + ' retry=' + STATE.retryCount);
+
+  // 第 3 次重试时：先做 HTTP 预检 + 显示排障提示
+  if (STATE.retryCount === 3) {
+    httpPreCheck().then(function(ok) {
+      if (!ok) {
+        dbg('HTTP pre-check FAILED — 网络不可达', 'err');
+        setStatus('网络不可达', 'error');
+        showToast('无法连接服务器，请确认手机和电脑在同一WiFi下', 5000);
+      } else {
+        dbg('HTTP pre-check OK — 网络正常但 WS 失败', 'err');
+        showConnectHelp();
+      }
+    });
+  }
+  // 第 5 次重试时自动打开调试面板
+  if (STATE.retryCount === 5) {
+    const dp = $('debug-panel');
+    if (dp) dp.classList.remove('hide');
+  }
 
   let ws;
   try {
@@ -806,8 +875,12 @@ function sendConnect() {
   };
   request('connect', params).then(res => {
     STATE.connected = true;
+    STATE.retryCount = 0;
     setStatus('已连接', 'connected');
     dbg('Connected OK!', 'ok');
+    // 连接成功后隐藏调试面板
+    const dp = $('debug-panel');
+    if (dp) dp.classList.add('hide');
   }).catch(err => {
     setStatus('认证失败', 'error');
     dbg('Connect failed: ' + (err.message || JSON.stringify(err)), 'err');
@@ -1000,7 +1073,10 @@ function renderMd(text) {
     });
 
   // D5: 自动识别裸 URL 并变为可点击链接（排除已被 <a> 包裹的）
-  h = h.replace(/(?<![="'>])(https?:\/\/[^\s<,;)}\]]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  // 注意：不使用 lookbehind (?<!...) — iOS Safari < 16.4 不支持
+  h = h.replace(/(^|[^="'>])(https?:\/\/[^\s<,;)}\]]+)/g, function(m, pre, url) {
+    return pre + '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>';
+  })
     // 引用
     .replace(/^&gt;\s?(.+)$/gm, '<blockquote>$1</blockquote>')
     // 无序列表
@@ -1318,6 +1394,13 @@ function init() {
   dbg('URL: ' + location.href);
   dbg('Host: ' + location.host);
   dbg('UA: ' + navigator.userAgent.slice(0, 80));
+
+  // ── 内嵌浏览器检测：提前警告用户 ──
+  if (isInAppBrowser()) {
+    const appName = getInAppName();
+    dbg('⚠️ 检测到内嵌浏览器: ' + appName, 'err');
+    showToast('检测到' + appName + '内置浏览器，可能无法连接\n请点击右上角 → 在浏览器中打开', 6000);
+  }
 
   // 从 URL hash 读取 token
   const hash = location.hash.replace('#', '');
