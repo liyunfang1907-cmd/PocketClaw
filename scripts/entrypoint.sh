@@ -329,9 +329,12 @@ inject_mobile() {
     return
   fi
 
-  if [ -f "$MOBILE_HTML" ]; then
+  if [ -f "$CONTROL_UI_DIR/mobile.html" ]; then
+    # 构建时已由 Dockerfile COPY 到位，read_only 容器无需运行时复制
+    echo "  ✅ 手机专属页面已就绪"
+  elif [ -f "$MOBILE_HTML" ]; then
     cp "$MOBILE_HTML" "$CONTROL_UI_DIR/mobile.html" 2>/dev/null && \
-      echo "  ✅ 手机专属页面已注入" || echo "  ⚠️  手机页面注入失败"
+      echo "  ✅ 手机专属页面已注入" || echo "  ⚠️  手机页面注入失败（read_only 模式下可忽略）"
   fi
 }
 

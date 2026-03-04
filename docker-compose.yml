@@ -68,9 +68,9 @@ services:
     pids_limit: 128                      # 进程数上限，防止 fork 炸弹
     tmpfs:
       - /tmp:size=100M,noexec,nosuid     # 临时目录: 禁止执行、禁止 setuid
-      - /home/node/.npm:size=50M         # npm 运行时缓存
+      - /home/node/.npm:size=50M,uid=1000,gid=1000  # npm 运行时缓存
       - /var/log:size=50M                # 日志目录
-      - /home/node/.openclaw:size=100M   # entrypoint 动态生成 openclaw.json
+      - /home/node/.openclaw:size=100M,uid=1000,gid=1000  # entrypoint 动态生成 openclaw.json
 
 networks:
   pocketclaw-net:
