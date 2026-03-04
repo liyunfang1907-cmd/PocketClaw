@@ -677,36 +677,14 @@ function timeStr() {
   return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
 }
 
-// ── 内嵌浏览器检测（微信/QQ 等扫码工具的内置浏览器可能无法建立 WebSocket） ──
-function isInAppBrowser() {
-  const ua = navigator.userAgent;
-  return /MicroMessenger|WeChat|QQ\/|Weibo|Alipay|DingTalk|BytedanceWebview|TikTok|baiduboxapp/i.test(ua);
-}
-function getInAppName() {
-  const ua = navigator.userAgent;
-  if (/MicroMessenger|WeChat/i.test(ua)) return '微信';
-  if (/QQ\//i.test(ua)) return 'QQ';
-  if (/Weibo/i.test(ua)) return '微博';
-  if (/Alipay/i.test(ua)) return '支付宝';
-  if (/DingTalk/i.test(ua)) return '钉钉';
-  if (/BytedanceWebview|TikTok/i.test(ua)) return '抖音';
-  if (/baiduboxapp/i.test(ua)) return '百度';
-  return '当前应用';
-}
-
 // ── 连接排障提示 ──
 function showConnectHelp() {
   const tips = [];
-  if (isInAppBrowser()) {
-    tips.push('⚠️ 检测到' + getInAppName() + '内置浏览器，可能影响连接');
-    tips.push('→ 请点击右上角菜单 → 在浏览器中打开');
-  }
   tips.push('📶 请确认手机和电脑在同一 WiFi 下');
   tips.push('🔄 尝试关闭页面重新扫码');
-  tips.push('📋 或复制地址栏链接到系统浏览器打开');
   const msg = tips.join('\n');
   showToast(msg, 8000);
-  dbg('Show help: inApp=' + isInAppBrowser() + ' retries=' + STATE.retryCount, 'info');
+  dbg('Show help: retries=' + STATE.retryCount, 'info');
 }
 
 // ── HTTP 连通性预检（WebSocket 连接前先确认 HTTP 可达） ──
@@ -1394,13 +1372,6 @@ function init() {
   dbg('URL: ' + location.href);
   dbg('Host: ' + location.host);
   dbg('UA: ' + navigator.userAgent.slice(0, 80));
-
-  // ── 内嵌浏览器检测：提前警告用户 ──
-  if (isInAppBrowser()) {
-    const appName = getInAppName();
-    dbg('⚠️ 检测到内嵌浏览器: ' + appName, 'err');
-    showToast('检测到' + appName + '内置浏览器，可能无法连接\n请点击右上角 → 在浏览器中打开', 6000);
-  }
 
   // 从 URL hash 读取 token
   const hash = location.hash.replace('#', '');
