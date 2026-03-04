@@ -252,6 +252,18 @@ html, body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* 流式输出光标 */
+.stream-cursor {
+  display: inline;
+  animation: stream-blink 0.8s steps(2) infinite;
+  color: var(--text-secondary, #999);
+  font-weight: normal;
+}
+@keyframes stream-blink {
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 /* ── 输入区域 ── */
 #input-area {
   flex-shrink: 0;
@@ -1091,7 +1103,7 @@ function updateStreamBubble(text) {
     DOM.messages.appendChild(div);
     el = div;
   }
-  el.querySelector('.bubble').innerHTML = renderMd(text);
+  el.querySelector('.bubble').innerHTML = renderMd(text) + '<span class="stream-cursor">\u258C</span>';
   scrollToBottom();
 }
 

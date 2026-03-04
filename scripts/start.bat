@@ -509,7 +509,7 @@ if "!CURRENT_HASH!" neq "" if "!CURRENT_HASH!"=="!PREV_HASH!" (
 if "!NEED_BUILD!"=="0" goto :skip_build
 
 echo [信息] 正在构建并启动 PocketClaw 容器...
-echo        首次构建大约需要 2-5 分钟，请耐心等待。
+echo        首次构建需下载依赖，约需3-5分钟。之后启动将秒级完成。
 echo        详细日志保存在: data\logs\build.log
 echo.
 if not exist "%PROJECT_DIR%\data\logs" mkdir "%PROJECT_DIR%\data\logs"
@@ -566,6 +566,23 @@ if "!CURRENT_HASH!" neq "" echo !CURRENT_HASH!> "!BUILD_HASH_FILE!"
 
 :skip_build
 
+REM 确保容器已运行（跳过构建时容器可能未启动）
+docker compose up -d >nul 2>&1
+REM 等待容器就绪
+set "CONTAINER_WAIT=0"
+:container_wait
+docker exec pocketclaw echo OK >nul 2>&1
+if !ERRORLEVEL! equ 0 goto :container_ok
+set /a "CONTAINER_WAIT+=2"
+if !CONTAINER_WAIT! geq 30 (
+    echo [错误] 容器启动超时，请检查 Docker Desktop 是否运行
+    pause
+    exit /b 1
+)
+timeout /t 2 /nobreak >nul
+goto :container_wait
+:container_ok
+
 
 echo.
 REM 版本号已在更新检查阶段读取（PC_VER）
@@ -591,9 +608,25 @@ echo   控制面板: http://127.0.0.1:18789/#token=!GATEWAY_AUTH_PASSWORD!
 if not "!LAN_IP!"=="" (
     echo   手机访问: http://!LAN_IP!:18789/mobile.html#token=!GATEWAY_AUTH_PASSWORD!
     echo.
+    set "MOBILE_URL=http://!LAN_IP!:18789/mobile.html#token=!GATEWAY_AUTH_PASSWORD!"
     echo   [扫码手机访问]
     echo.
-    docker exec pocketclaw python3 -c "import qrcode,sys;qr=qrcode.QRCode(border=1);qr.add_data(sys.argv[1]);qr.print_ascii()" "http://!LAN_IP!:18789/mobile.html#token=!GATEWAY_AUTH_PASSWORD!" 2>nul
+    REM 生成二维码（优先容器内，失败则写临时脚本用主机 Python）
+    set "QR_OK=0"
+    docker exec pocketclaw python3 -c "import qrcode,sys;qr=qrcode.QRCode(border=1);qr.add_data(sys.argv[1]);qr.print_ascii()" "!MOBILE_URL!" 2>nul && set "QR_OK=1"
+    if "!QR_OK!"=="0" (
+        REM 写临时 Python 脚本避免 CMD 引号问题
+        echo import qrcode> "%TEMP%\pc_qr.py"
+        echo qr=qrcode.QRCode(border=1)>> "%TEMP%\pc_qr.py"
+        echo qr.add_data("!MOBILE_URL!")>> "%TEMP%\pc_qr.py"
+        echo qr.print_ascii()>> "%TEMP%\pc_qr.py"
+        python3 "%TEMP%\pc_qr.py" 2>nul && set "QR_OK=1"
+        if "!QR_OK!"=="0" python "%TEMP%\pc_qr.py" 2>nul && set "QR_OK=1"
+        del /q "%TEMP%\pc_qr.py" 2>nul
+    )
+    if "!QR_OK!"=="0" (
+        echo   ↑ 扫码失败，请复制上方 URL 在手机浏览器打开
+    )
     echo.
 )
 echo.
