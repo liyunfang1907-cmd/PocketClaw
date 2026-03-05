@@ -56,21 +56,21 @@ if [ "$PROVIDER_CHOICE" = "1" ]; then
     echo ""
     echo "  选择免费 AI 模型:"
     echo ""
-    echo "   [1] 智谱 GLM-4.7-Flash（推荐）"
+    echo "   [1] iFlow 心流（推荐，多模型聚合）"
+    echo "       DeepSeek V3.2 / Qwen3 / Kimi K2 等顶级模型，均免费"
+    echo "       注册: https://platform.iflow.cn"
+    echo ""
+    echo "   [2] 智谱 GLM-4.7-Flash"
     echo "       200K 上下文，稳定快速，永久免费"
     echo "       注册: https://open.bigmodel.cn"
-    echo ""
-    echo "   [2] iFlow 心流（多模型聚合）"
-    echo "       DeepSeek V3.2 / Qwen3 / Kimi K2 等顶级模型"
-    echo "       注册: https://platform.iflow.cn"
     echo ""
     FREE_CHOICE=""
     while [[ ! "$FREE_CHOICE" =~ ^[12]$ ]]; do
         read -rp "  请选择 [1-2]: " FREE_CHOICE
     done
     case "$FREE_CHOICE" in
-        1) PROV="zhipu";  PROV_NAME="智谱 AI";    DEFAULT_MODEL="glm-4.7-flash"; KEY_URL="https://open.bigmodel.cn/usercenter/apikeys" ;;
-        2) PROV="iflow";  PROV_NAME="iFlow 心流";  DEFAULT_MODEL="deepseek-v3.2"; KEY_URL="https://platform.iflow.cn" ;;
+        1) PROV="iflow";  PROV_NAME="iFlow 心流";  DEFAULT_MODEL="deepseek-v3.2"; KEY_URL="https://platform.iflow.cn" ;;
+        2) PROV="zhipu";  PROV_NAME="智谱 AI";    DEFAULT_MODEL="glm-4.7-flash"; KEY_URL="https://open.bigmodel.cn/usercenter/apikeys" ;;
     esac
 fi
 
@@ -134,6 +134,21 @@ else
     echo "  默认模型: $DEFAULT_MODEL"
     echo ""
     echo "  获取 API Key: $KEY_URL"
+fi
+
+if [ "$PROV" = "iflow" ]; then
+    echo ""
+    echo "  ┌─────────────────────────────────────────────────┐"
+    echo "  │  获取 API Key 步骤:                             │"
+    echo "  │                                                 │"
+    echo "  │  1. 打开: https://platform.iflow.cn             │"
+    echo "  │  2. 注册/登录后, 点击「API Key 管理」           │"
+    echo "  │  3. 点击「重置 API 密钥」, 复制生成的 Key       │"
+    echo "  │                                                 │"
+    echo "  │  [!] 注意: API Key 有效期只有 7 天              │"
+    echo "  │      到期后需再次点击「重置 API 密钥」获取新Key │"
+    echo "  │      并通过「切换 API」重新输入到 PocketClaw     │"
+    echo "  └─────────────────────────────────────────────────┘"
 fi
 echo ""
 

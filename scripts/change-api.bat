@@ -29,48 +29,48 @@ echo ===================================================
 echo.
 echo   选择 AI 模型提供商:
 echo.
-echo   [1] 智谱 AI          (推荐，全部免费)
+echo   [1] iFlow 心流        (推荐，免费多模型聚合)
+echo       DeepSeek V3.2 / Qwen3 / Kimi K2 等顶级模型，均免费
+echo       注册: https://platform.iflow.cn
+echo.
+echo   [2] 智谱 AI          (免费)
 echo       GLM-4.7-Flash / GLM-4.6V-Flash / GLM-Z1-Flash
 echo       注册: https://open.bigmodel.cn
 echo.
-echo   [2] DeepSeek          (性价比最高)
+echo   [3] DeepSeek          (性价比最高)
 echo       DeepSeek-V3 / DeepSeek-R1
 echo       注册: https://platform.deepseek.com
 echo.
-echo   [3] Moonshot/Kimi     (长文本能力强)
+echo   [4] Moonshot/Kimi     (长文本能力强)
 echo       Moonshot-v1 (8K/32K/128K)
 echo       注册: https://platform.moonshot.cn
 echo.
-echo   [4] 通义千问 Qwen     (阿里云)
+echo   [5] 通义千问 Qwen     (阿里云)
 echo       Qwen-Turbo / Qwen-Plus / Qwen-Max
 echo       注册: https://dashscope.console.aliyun.com
 echo.
-echo   [5] 零一万物 Yi       (性能优秀)
+echo   [6] 零一万物 Yi       (性能优秀)
 echo       Yi-Lightning / Yi-Large
 echo       注册: https://platform.lingyiwanwu.com
 echo.
-echo   [6] 硅基流动          (免费开源模型聚合)
+echo   [7] 硅基流动          (免费开源模型聚合)
 echo       DeepSeek V3/R1 / Qwen / GLM (均免费)
 echo       注册: https://cloud.siliconflow.cn
 echo.
-echo   [7] 智谱 AI (付费高级) GLM-4-Plus / GLM-4-Long
+echo   [8] 智谱 AI (付费高级) GLM-4-Plus / GLM-4-Long
 echo       注册: https://open.bigmodel.cn
 echo.
-echo   [8] OpenAI             GPT-4o / GPT-4.1 / o3-mini
+echo   [9] OpenAI             GPT-4o / GPT-4.1 / o3-mini
 echo       注册: https://platform.openai.com
 echo.
-echo   [9] Anthropic Claude   Claude Sonnet 4 / Opus 4
+echo  [10] Anthropic Claude   Claude Sonnet 4 / Opus 4
 echo       注册: https://console.anthropic.com
 echo.
-echo  [10] Google Gemini      Gemini 2.5 Flash / Pro
+echo  [11] Google Gemini      Gemini 2.5 Flash / Pro
 echo       注册: https://aistudio.google.com
 echo.
-echo  [11] xAI Grok           Grok 3 / Grok 3 Mini
+echo  [12] xAI Grok           Grok 3 / Grok 3 Mini
 echo       注册: https://console.x.ai
-echo.
-echo  [12] iFlow 心流          (免费多模型聚合)
-echo       DeepSeek V3.2 / Qwen3 / Kimi K2 (均免费)
-echo       注册: https://platform.iflow.cn
 echo.
 echo   [0] 仅更新当前 API Key (不切换提供商)
 echo.
@@ -81,76 +81,76 @@ set /p "MENU_CHOICE=请选择 [0-12]: "
 if "!MENU_CHOICE!"=="0" goto :update_key_only
 
 if "!MENU_CHOICE!"=="1" (
+    set "PROV=iflow"
+    set "PROV_NAME=iFlow 心流"
+    set "DEFAULT_MODEL=deepseek-v3.2"
+    set "KEY_URL=https://platform.iflow.cn"
+)
+if "!MENU_CHOICE!"=="2" (
     set "PROV=zhipu"
     set "PROV_NAME=智谱 AI"
     set "DEFAULT_MODEL=glm-4.7-flash"
     set "KEY_URL=https://open.bigmodel.cn/usercenter/apikeys"
 )
-if "!MENU_CHOICE!"=="2" (
+if "!MENU_CHOICE!"=="3" (
     set "PROV=deepseek"
     set "PROV_NAME=DeepSeek"
     set "DEFAULT_MODEL=deepseek-chat"
     set "KEY_URL=https://platform.deepseek.com/api_keys"
 )
-if "!MENU_CHOICE!"=="3" (
+if "!MENU_CHOICE!"=="4" (
     set "PROV=moonshot"
     set "PROV_NAME=Moonshot/Kimi"
     set "DEFAULT_MODEL=moonshot-v1-auto"
     set "KEY_URL=https://platform.moonshot.cn/console/api-keys"
 )
-if "!MENU_CHOICE!"=="4" (
+if "!MENU_CHOICE!"=="5" (
     set "PROV=qwen"
     set "PROV_NAME=通义千问 Qwen"
     set "DEFAULT_MODEL=qwen-turbo-latest"
     set "KEY_URL=https://dashscope.console.aliyun.com/apiKey"
 )
-if "!MENU_CHOICE!"=="5" (
+if "!MENU_CHOICE!"=="6" (
     set "PROV=yi"
     set "PROV_NAME=零一万物 Yi"
     set "DEFAULT_MODEL=yi-lightning"
     set "KEY_URL=https://platform.lingyiwanwu.com/apikeys"
 )
-if "!MENU_CHOICE!"=="6" (
+if "!MENU_CHOICE!"=="7" (
     set "PROV=siliconflow"
     set "PROV_NAME=硅基流动 SiliconFlow"
     set "DEFAULT_MODEL=deepseek-ai/DeepSeek-V3"
     set "KEY_URL=https://cloud.siliconflow.cn/account/ak"
 )
-if "!MENU_CHOICE!"=="7" (
+if "!MENU_CHOICE!"=="8" (
     set "PROV=zhipu-pro"
     set "PROV_NAME=智谱 AI (付费高级)"
     set "DEFAULT_MODEL=glm-4-plus"
     set "KEY_URL=https://open.bigmodel.cn/usercenter/apikeys"
 )
-if "!MENU_CHOICE!"=="8" (
+if "!MENU_CHOICE!"=="9" (
     set "PROV=openai"
     set "PROV_NAME=OpenAI"
     set "DEFAULT_MODEL=gpt-4o"
     set "KEY_URL=https://platform.openai.com/api-keys"
 )
-if "!MENU_CHOICE!"=="9" (
+if "!MENU_CHOICE!"=="10" (
     set "PROV=anthropic"
     set "PROV_NAME=Anthropic Claude"
     set "DEFAULT_MODEL=claude-sonnet-4-20250514"
     set "KEY_URL=https://console.anthropic.com/settings/keys"
 )
-if "!MENU_CHOICE!"=="10" (
+if "!MENU_CHOICE!"=="11" (
     set "PROV=gemini"
     set "PROV_NAME=Google Gemini"
     set "DEFAULT_MODEL=gemini-2.5-flash"
     set "KEY_URL=https://aistudio.google.com/apikey"
 )
-if "!MENU_CHOICE!"=="11" (
+if "!MENU_CHOICE!"=="12" (
     set "PROV=xai"
     set "PROV_NAME=xAI Grok"
     set "DEFAULT_MODEL=grok-3-mini"
     set "KEY_URL=https://console.x.ai"
-)
-if "!MENU_CHOICE!"=="12" (
-    set "PROV=iflow"
-    set "PROV_NAME=iFlow 心流"
-    set "DEFAULT_MODEL=deepseek-v3.2"
-    set "KEY_URL=https://platform.iflow.cn"
 )
 if not defined PROV (
     echo   [错误] 无效选择
@@ -160,6 +160,17 @@ if not defined PROV (
 echo.
 echo   已选择: !PROV_NAME!
 echo   获取 API Key: !KEY_URL!
+if "!PROV!"=="iflow" (
+    echo.
+    echo   获取 API Key 步骤:
+    echo   1. 打开 https://platform.iflow.cn
+    echo   2. 注册/登录后, 点击「API Key 管理」
+    echo   3. 点击「重置 API 密钥」, 复制生成的 Key
+    echo.
+    echo   [!] 注意: API Key 有效期只有7天
+    echo       到期后需再次点击「重置 API 密钥」获取新 Key
+    echo       并通过「切换 API」重新输入到 PocketClaw
+)
 echo.
 
 set "NEW_KEY="
@@ -187,31 +198,6 @@ echo   [OK] 提供商配置已保存
 REM 同时更新 .env
 call :do_update_env
 goto :restart_prompt
-
-REM ============================================================
-:update_key_only
-REM 仅更新 API Key (不切换提供商)
-echo.
-
-REM 如果 .env 不存在，先解密
-if not exist "%ENV_FILE%" (
-    if exist "%ENC_FILE%" (
-        echo [信息] 正在解密 .env ...
-        for /f "delims=" %%p in ('powershell -NoProfile -Command "$p = Read-Host -Prompt '  Master Password' -AsSecureString; [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($p))"') do set "MASTER_PASS=%%p"
-        <nul set /p ="!MASTER_PASS!"| openssl enc -aes-256-cbc -d -salt -pbkdf2 -iter 100000 ^
-            -in "%ENC_FILE%" -out "%ENV_FILE%" -pass stdin 2>nul
-        if errorlevel 1 (
-            echo [错误] 解密失败。
-            popd ^& pause ^& exit /b 1
-        )
-        set "NEED_REENCRYPT=1"
-    ) else (
-        echo [错误] 未找到配置文件，请先运行 setup-env.bat
-        popd ^& pause ^& exit /b 1
-    )
-) else (
-    set "NEED_REENCRYPT=0"
-)
 
 REM ============================================================
 :update_key_only

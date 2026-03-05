@@ -52,19 +52,19 @@ goto :ask_provider
 echo.
 echo   选择免费 AI 模型:
 echo.
-echo    [1] 智谱 GLM-4.7-Flash（推荐）
+echo    [1] iFlow 心流（推荐，多模型聚合）
+echo        DeepSeek V3.2 / Qwen3 / Kimi K2 等顶级模型，均免费
+echo        注册: https://platform.iflow.cn
+echo.
+echo    [2] 智谱 GLM-4.7-Flash
 echo        200K 上下文，稳定快速，永久免费
 echo        注册: https://open.bigmodel.cn
-echo.
-echo    [2] iFlow 心流（多模型聚合）
-echo        DeepSeek V3.2 / Qwen3 / Kimi K2 等顶级模型
-echo        注册: https://platform.iflow.cn
 echo.
 :ask_free
 set "FREE_CHOICE="
 set /p "FREE_CHOICE=  请选择 [1-2]: "
-if "!FREE_CHOICE!"=="1" goto :zhipu_free
-if "!FREE_CHOICE!"=="2" goto :iflow_free
+if "!FREE_CHOICE!"=="1" goto :iflow_free
+if "!FREE_CHOICE!"=="2" goto :zhipu_free
 echo   [错误] 请输入 1 或 2
 goto :ask_free
 
@@ -181,6 +181,17 @@ if "!PROV!"=="zhipu" (
     echo   1. 打开 https://open.bigmodel.cn
     echo   2. 注册/登录, 进入 API密钥 页面
     echo   3. 创建新 API Key, 复制生成的密钥
+) else if "!PROV!"=="iflow" (
+    echo   PocketClaw 使用 iFlow 心流免费模型聚合
+    echo.
+    echo   获取 API Key:
+    echo   1. 打开 https://platform.iflow.cn
+    echo   2. 注册/登录后, 点击「API Key 管理」
+    echo   3. 点击「重置 API 密钥」, 复制生成的 Key
+    echo.
+    echo   [!] 注意: API Key 有效期只有7天
+    echo       到期后需再次点击「重置 API 密钥」获取新 Key
+    echo       并通过「切换 API」重新输入到 PocketClaw
 ) else (
     echo   已选择: !PROV_NAME!
     echo   默认模型: !DEFAULT_MODEL!

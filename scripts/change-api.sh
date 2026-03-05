@@ -24,48 +24,48 @@ echo "==================================================="
 echo ""
 echo "  选择 AI 模型提供商:"
 echo ""
-echo "  [1] 智谱 AI          (推荐，全部免费)"
+echo "  [1] iFlow 心流        (推荐，免费多模型聚合)"
+echo "      DeepSeek V3.2 / Qwen3 / Kimi K2 等顶级模型，均免费"
+echo "      注册: https://platform.iflow.cn"
+echo ""
+echo "  [2] 智谱 AI          (免费)"
 echo "      GLM-4.7-Flash / GLM-4.6V-Flash / GLM-Z1-Flash"
 echo "      注册: https://open.bigmodel.cn"
 echo ""
-echo "  [2] DeepSeek          (性价比最高)"
+echo "  [3] DeepSeek          (性价比最高)"
 echo "      DeepSeek-V3 / DeepSeek-R1"
 echo "      注册: https://platform.deepseek.com"
 echo ""
-echo "  [3] Moonshot/Kimi     (长文本能力强)"
+echo "  [4] Moonshot/Kimi     (长文本能力强)"
 echo "      Moonshot-v1 (8K/32K/128K)"
 echo "      注册: https://platform.moonshot.cn"
 echo ""
-echo "  [4] 通义千问 Qwen     (阿里云)"
+echo "  [5] 通义千问 Qwen     (阿里云)"
 echo "      Qwen-Turbo / Qwen-Plus / Qwen-Max"
 echo "      注册: https://dashscope.console.aliyun.com"
 echo ""
-echo "  [5] 零一万物 Yi       (性能优秀)"
+echo "  [6] 零一万物 Yi       (性能优秀)"
 echo "      Yi-Lightning / Yi-Large"
 echo "      注册: https://platform.lingyiwanwu.com"
 echo ""
-echo "  [6] 硅基流动          (免费开源模型聚合)"
+echo "  [7] 硅基流动          (免费开源模型聚合)"
 echo "      DeepSeek V3/R1 / Qwen / GLM (均免费)"
 echo "      注册: https://cloud.siliconflow.cn"
 echo ""
-echo "  [7] 智谱 AI (付费高级) GLM-4-Plus / GLM-4-Long"
+echo "  [8] 智谱 AI (付费高级) GLM-4-Plus / GLM-4-Long"
 echo "      注册: https://open.bigmodel.cn"
 echo ""
-echo "  [8] OpenAI             GPT-4o / GPT-4.1 / o3-mini"
+echo "  [9] OpenAI             GPT-4o / GPT-4.1 / o3-mini"
 echo "      注册: https://platform.openai.com"
 echo ""
-echo "  [9] Anthropic Claude   Claude Sonnet 4 / Opus 4"
+echo " [10] Anthropic Claude   Claude Sonnet 4 / Opus 4"
 echo "      注册: https://console.anthropic.com"
 echo ""
-echo " [10] Google Gemini      Gemini 2.5 Flash / Pro"
+echo " [11] Google Gemini      Gemini 2.5 Flash / Pro"
 echo "      注册: https://aistudio.google.com"
 echo ""
-echo " [11] xAI Grok           Grok 3 / Grok 3 Mini"
+echo " [12] xAI Grok           Grok 3 / Grok 3 Mini"
 echo "      注册: https://console.x.ai"
-echo ""
-echo " [12] iFlow 心流          (免费多模型聚合)"
-echo "      DeepSeek V3.2 / Qwen3 / Kimi K2 (均免费)"
-echo "      注册: https://platform.iflow.cn"
 echo ""
 echo "  [0] 仅更新当前 API Key (不切换提供商)"
 echo ""
@@ -143,24 +143,36 @@ fi
 
 # ── [1-6] 切换提供商 ──
 case "$MENU_CHOICE" in
-    1) PROV="zhipu";       PROV_NAME="智谱 AI";             DEFAULT_MODEL="glm-4.7-flash";            KEY_URL="https://open.bigmodel.cn/usercenter/apikeys" ;;
-    2) PROV="deepseek";    PROV_NAME="DeepSeek";             DEFAULT_MODEL="deepseek-chat";             KEY_URL="https://platform.deepseek.com/api_keys" ;;
-    3) PROV="moonshot";    PROV_NAME="Moonshot/Kimi";        DEFAULT_MODEL="moonshot-v1-auto";          KEY_URL="https://platform.moonshot.cn/console/api-keys" ;;
-    4) PROV="qwen";        PROV_NAME="通义千问 Qwen";         DEFAULT_MODEL="qwen-turbo-latest";         KEY_URL="https://dashscope.console.aliyun.com/apiKey" ;;
-    5) PROV="yi";          PROV_NAME="零一万物 Yi";            DEFAULT_MODEL="yi-lightning";              KEY_URL="https://platform.lingyiwanwu.com/apikeys" ;;
-    6) PROV="siliconflow"; PROV_NAME="硅基流动 SiliconFlow";   DEFAULT_MODEL="deepseek-ai/DeepSeek-V3";  KEY_URL="https://cloud.siliconflow.cn/account/ak" ;;
-    7) PROV="zhipu-pro";   PROV_NAME="智谱 AI (付费高级)";   DEFAULT_MODEL="glm-4-plus";              KEY_URL="https://open.bigmodel.cn/usercenter/apikeys" ;;
-    8) PROV="openai";      PROV_NAME="OpenAI";               DEFAULT_MODEL="gpt-4o";                  KEY_URL="https://platform.openai.com/api-keys" ;;
-    9) PROV="anthropic";   PROV_NAME="Anthropic Claude";     DEFAULT_MODEL="claude-sonnet-4-20250514"; KEY_URL="https://console.anthropic.com/settings/keys" ;;
-   10) PROV="gemini";      PROV_NAME="Google Gemini";        DEFAULT_MODEL="gemini-2.5-flash";        KEY_URL="https://aistudio.google.com/apikey" ;;
-   11) PROV="xai";         PROV_NAME="xAI Grok";             DEFAULT_MODEL="grok-3-mini";             KEY_URL="https://console.x.ai" ;;
-   12) PROV="iflow";       PROV_NAME="iFlow 心流";            DEFAULT_MODEL="deepseek-v3.2";           KEY_URL="https://platform.iflow.cn" ;;
+    1) PROV="iflow";       PROV_NAME="iFlow 心流";            DEFAULT_MODEL="deepseek-v3.2";           KEY_URL="https://platform.iflow.cn" ;;
+    2) PROV="zhipu";       PROV_NAME="智谱 AI";             DEFAULT_MODEL="glm-4.7-flash";            KEY_URL="https://open.bigmodel.cn/usercenter/apikeys" ;;
+    3) PROV="deepseek";    PROV_NAME="DeepSeek";             DEFAULT_MODEL="deepseek-chat";             KEY_URL="https://platform.deepseek.com/api_keys" ;;
+    4) PROV="moonshot";    PROV_NAME="Moonshot/Kimi";        DEFAULT_MODEL="moonshot-v1-auto";          KEY_URL="https://platform.moonshot.cn/console/api-keys" ;;
+    5) PROV="qwen";        PROV_NAME="通义千问 Qwen";         DEFAULT_MODEL="qwen-turbo-latest";         KEY_URL="https://dashscope.console.aliyun.com/apiKey" ;;
+    6) PROV="yi";          PROV_NAME="零一万物 Yi";            DEFAULT_MODEL="yi-lightning";              KEY_URL="https://platform.lingyiwanwu.com/apikeys" ;;
+    7) PROV="siliconflow"; PROV_NAME="硅基流动 SiliconFlow";   DEFAULT_MODEL="deepseek-ai/DeepSeek-V3";  KEY_URL="https://cloud.siliconflow.cn/account/ak" ;;
+    8) PROV="zhipu-pro";   PROV_NAME="智谱 AI (付费高级)";   DEFAULT_MODEL="glm-4-plus";              KEY_URL="https://open.bigmodel.cn/usercenter/apikeys" ;;
+    9) PROV="openai";      PROV_NAME="OpenAI";               DEFAULT_MODEL="gpt-4o";                  KEY_URL="https://platform.openai.com/api-keys" ;;
+   10) PROV="anthropic";   PROV_NAME="Anthropic Claude";     DEFAULT_MODEL="claude-sonnet-4-20250514"; KEY_URL="https://console.anthropic.com/settings/keys" ;;
+   11) PROV="gemini";      PROV_NAME="Google Gemini";        DEFAULT_MODEL="gemini-2.5-flash";        KEY_URL="https://aistudio.google.com/apikey" ;;
+   12) PROV="xai";         PROV_NAME="xAI Grok";             DEFAULT_MODEL="grok-3-mini";             KEY_URL="https://console.x.ai" ;;
     *) echo "  无效选择"; exit 1 ;;
 esac
 
 echo ""
 echo "  已选择: $PROV_NAME"
 echo "  获取 API Key: $KEY_URL"
+
+if [ "$PROV" = "iflow" ]; then
+    echo ""
+    echo "  获取 API Key 步骤:"
+    echo "  1. 打开 https://platform.iflow.cn"
+    echo "  2. 注册/登录后, 点击「API Key 管理」"
+    echo "  3. 点击「重置 API 密钥」, 复制生成的 Key"
+    echo ""
+    echo "  [!] 注意: API Key 有效期只有 7 天"
+    echo "      到期后需再次点击「重置 API 密钥」获取新Key"
+    echo "      并通过「切换 API」重新输入到 PocketClaw"
+fi
 echo ""
 
 read -rp "  请粘贴你的 ${PROV_NAME} API Key: " NEW_KEY
