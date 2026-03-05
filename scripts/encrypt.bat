@@ -43,32 +43,26 @@ if not exist "%ENV_FILE%" (
 REM --------------- 输入密码 ---------------
 echo.
 echo === PocketClaw .env 加密工具 ===
+echo   密码要求: 两次输入一致即可（任意长度）
 echo.
+
+:ask_encrypt_pass
 REM 使用 PowerShell 读取密码（输入时显示 * 号遮蔽）
 for /f "delims=" %%p in ('powershell -NoProfile -Command "$p = Read-Host -Prompt '  请输入加密密码' -AsSecureString; [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($p))"') do set "MASTER_PASS=%%p"
 
 if "!MASTER_PASS!"=="" (
     echo [错误] 密码不能为空.
-    popd
-    pause
-    exit /b 1
-)
-
-REM --------------- 密码长度校验 ---------------
-powershell -NoProfile -Command "$p='!MASTER_PASS!'; if($p.Length -lt 8){Write-Host '[错误] 密码太短, 至少需要 8 个字符.'; exit 1}; if(-not($p -match '[a-zA-Z]' -and $p -match '[0-9]')){Write-Host '[错误] 密码需同时包含字母和数字.'; exit 1}" || (
-    popd
-    pause
-    exit /b 1
+    echo.
+    goto :ask_encrypt_pass
 )
 
 REM 确认密码也使用 PowerShell 掩码输入
 for /f "delims=" %%p in ('powershell -NoProfile -Command "$p = Read-Host -Prompt '  请再次确认密码' -AsSecureString; [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($p))"') do set "MASTER_PASS2=%%p"
 
 if not "!MASTER_PASS!"=="!MASTER_PASS2!" (
-    echo [错误] 两次密码不一致, 请重试.
-    popd
-    pause
-    exit /b 1
+    echo [错误] 两次密码不一致, 请重新输入.
+    echo.
+    goto :ask_encrypt_pass
 )
 
 REM --------------- 创建 secrets 目录 ---------------
