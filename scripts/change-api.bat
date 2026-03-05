@@ -68,12 +68,16 @@ echo.
 echo  [11] xAI Grok           Grok 3 / Grok 3 Mini
 echo       注册: https://console.x.ai
 echo.
+echo  [12] iFlow 心流          (免费多模型聚合)
+echo       DeepSeek V3.2 / Qwen3 / Kimi K2 (均免费)
+echo       注册: https://platform.iflow.cn
+echo.
 echo   [0] 仅更新当前 API Key (不切换提供商)
 echo.
 
 :ask_menu
 set "MENU_CHOICE="
-set /p "MENU_CHOICE=请选择 [0-11]: "
+set /p "MENU_CHOICE=请选择 [0-12]: "
 if "!MENU_CHOICE!"=="0" goto :update_key_only
 
 if "!MENU_CHOICE!"=="1" (
@@ -141,6 +145,12 @@ if "!MENU_CHOICE!"=="11" (
     set "PROV_NAME=xAI Grok"
     set "DEFAULT_MODEL=grok-3-mini"
     set "KEY_URL=https://console.x.ai"
+)
+if "!MENU_CHOICE!"=="12" (
+    set "PROV=iflow"
+    set "PROV_NAME=iFlow 心流"
+    set "DEFAULT_MODEL=deepseek-v3.2"
+    set "KEY_URL=https://platform.iflow.cn"
 )
 if not defined PROV (
     echo   [错误] 无效选择

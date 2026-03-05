@@ -34,10 +34,10 @@ echo ""
 # ==========================================
 cyan "── [第 1 步] 选择 AI 模型提供商 ──"
 echo ""
-echo "  [1] 使用智谱免费 API（推荐，无需付费）"
-echo "      GLM-4.7-Flash 200K 上下文，永久免费"
+echo "  [1] 免费模型（推荐，无需付费）"
+echo "      智谱 GLM / iFlow 心流，注册即用"
 echo ""
-echo "  [2] 使用其他 API（需自备 API Key）"
+echo "  [2] 付费模型（需自备 API Key）"
 echo "      支持 OpenAI / Gemini / Claude / Grok / DeepSeek 等"
 echo ""
 
@@ -51,6 +51,28 @@ PROV="zhipu"
 PROV_NAME="智谱 AI"
 DEFAULT_MODEL="glm-4.7-flash"
 KEY_URL="https://open.bigmodel.cn/usercenter/apikeys"
+
+if [ "$PROVIDER_CHOICE" = "1" ]; then
+    echo ""
+    echo "  选择免费 AI 模型:"
+    echo ""
+    echo "   [1] 智谱 GLM-4.7-Flash（推荐）"
+    echo "       200K 上下文，稳定快速，永久免费"
+    echo "       注册: https://open.bigmodel.cn"
+    echo ""
+    echo "   [2] iFlow 心流（多模型聚合）"
+    echo "       DeepSeek V3.2 / Qwen3 / Kimi K2 等顶级模型"
+    echo "       注册: https://platform.iflow.cn"
+    echo ""
+    FREE_CHOICE=""
+    while [[ ! "$FREE_CHOICE" =~ ^[12]$ ]]; do
+        read -rp "  请选择 [1-2]: " FREE_CHOICE
+    done
+    case "$FREE_CHOICE" in
+        1) PROV="zhipu";  PROV_NAME="智谱 AI";    DEFAULT_MODEL="glm-4.7-flash"; KEY_URL="https://open.bigmodel.cn/usercenter/apikeys" ;;
+        2) PROV="iflow";  PROV_NAME="iFlow 心流";  DEFAULT_MODEL="deepseek-v3.2"; KEY_URL="https://platform.iflow.cn" ;;
+    esac
+fi
 
 if [ "$PROVIDER_CHOICE" = "2" ]; then
     echo ""

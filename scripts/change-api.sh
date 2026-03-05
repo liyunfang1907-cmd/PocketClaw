@@ -63,9 +63,13 @@ echo ""
 echo " [11] xAI Grok           Grok 3 / Grok 3 Mini"
 echo "      注册: https://console.x.ai"
 echo ""
+echo " [12] iFlow 心流          (免费多模型聚合)"
+echo "      DeepSeek V3.2 / Qwen3 / Kimi K2 (均免费)"
+echo "      注册: https://platform.iflow.cn"
+echo ""
 echo "  [0] 仅更新当前 API Key (不切换提供商)"
 echo ""
-read -rp "请选择 [0-11]: " MENU_CHOICE
+read -rp "请选择 [0-12]: " MENU_CHOICE
 
 # ── 解密 .env 的公共函数 ──
 do_decrypt() {
@@ -150,6 +154,7 @@ case "$MENU_CHOICE" in
     9) PROV="anthropic";   PROV_NAME="Anthropic Claude";     DEFAULT_MODEL="claude-sonnet-4-20250514"; KEY_URL="https://console.anthropic.com/settings/keys" ;;
    10) PROV="gemini";      PROV_NAME="Google Gemini";        DEFAULT_MODEL="gemini-2.5-flash";        KEY_URL="https://aistudio.google.com/apikey" ;;
    11) PROV="xai";         PROV_NAME="xAI Grok";             DEFAULT_MODEL="grok-3-mini";             KEY_URL="https://console.x.ai" ;;
+   12) PROV="iflow";       PROV_NAME="iFlow 心流";            DEFAULT_MODEL="deepseek-v3.2";           KEY_URL="https://platform.iflow.cn" ;;
     *) echo "  无效选择"; exit 1 ;;
 esac
 

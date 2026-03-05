@@ -95,6 +95,73 @@
       }
     ]
   },
+  "iflow": {
+    "label": "iFlow 心流 (免费)",
+    "baseUrl": "https://apis.iflow.cn/v1",
+    "defaultModel": "deepseek-v3.2",
+    "models": [
+      {
+        "id": "deepseek-v3.2",
+        "name": "DeepSeek V3.2 (最新旗舰)",
+        "input": [
+          "text"
+        ],
+        "contextWindow": 131072,
+        "maxTokens": 65536,
+        "compat": {}
+      },
+      {
+        "id": "qwen3-235b-a22b-instruct",
+        "name": "Qwen3 235B Instruct (超大)",
+        "input": [
+          "text"
+        ],
+        "contextWindow": 262144,
+        "maxTokens": 65536,
+        "compat": {}
+      },
+      {
+        "id": "kimi-k2-0905",
+        "name": "Kimi K2 (月之暗面)",
+        "input": [
+          "text"
+        ],
+        "contextWindow": 262144,
+        "maxTokens": 65536,
+        "compat": {}
+      },
+      {
+        "id": "deepseek-v3",
+        "name": "DeepSeek V3",
+        "input": [
+          "text"
+        ],
+        "contextWindow": 131072,
+        "maxTokens": 32768,
+        "compat": {}
+      },
+      {
+        "id": "deepseek-r1",
+        "name": "DeepSeek R1 (深度推理)",
+        "input": [
+          "text"
+        ],
+        "contextWindow": 32768,
+        "maxTokens": 131072,
+        "compat": {}
+      },
+      {
+        "id": "qwen3-max",
+        "name": "Qwen3 Max (通义旗舰)",
+        "input": [
+          "text"
+        ],
+        "contextWindow": 262144,
+        "maxTokens": 32768,
+        "compat": {}
+      }
+    ]
+  },
   "deepseek": {
     "label": "DeepSeek",
     "baseUrl": "https://api.deepseek.com/v1",

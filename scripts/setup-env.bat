@@ -34,25 +34,52 @@ REM 1. 选择 AI 模型提供商
 REM ==========================================
 echo -- [第 1 步] 选择 AI 模型提供商 --
 echo.
-echo   [1] 使用智谱免费 API（推荐，无需付费）
-echo       GLM-4.7-Flash 200K 上下文，永久免费
+echo   [1] 免费模型（推荐，无需付费）
+echo       智谱 GLM / iFlow 心流，注册即用
 echo.
-echo   [2] 使用其他 API（需自备 API Key）
+echo   [2] 付费模型（需自备 API Key）
 echo       支持 OpenAI / Gemini / Claude / Grok / DeepSeek 等
 echo.
 :ask_provider
 set "PROVIDER_CHOICE="
 set /p "PROVIDER_CHOICE=请选择 [1-2]: "
-if "!PROVIDER_CHOICE!"=="1" goto :zhipu_free
+if "!PROVIDER_CHOICE!"=="1" goto :free_models
 if "!PROVIDER_CHOICE!"=="2" goto :other_provider
 echo   [错误] 请输入 1 或 2
 goto :ask_provider
+
+:free_models
+echo.
+echo   选择免费 AI 模型:
+echo.
+echo    [1] 智谱 GLM-4.7-Flash（推荐）
+echo        200K 上下文，稳定快速，永久免费
+echo        注册: https://open.bigmodel.cn
+echo.
+echo    [2] iFlow 心流（多模型聚合）
+echo        DeepSeek V3.2 / Qwen3 / Kimi K2 等顶级模型
+echo        注册: https://platform.iflow.cn
+echo.
+:ask_free
+set "FREE_CHOICE="
+set /p "FREE_CHOICE=  请选择 [1-2]: "
+if "!FREE_CHOICE!"=="1" goto :zhipu_free
+if "!FREE_CHOICE!"=="2" goto :iflow_free
+echo   [错误] 请输入 1 或 2
+goto :ask_free
 
 :zhipu_free
 set "PROV=zhipu"
 set "PROV_NAME=智谱 AI"
 set "DEFAULT_MODEL=glm-4.7-flash"
 set "KEY_URL=https://open.bigmodel.cn/usercenter/apikeys"
+goto :ask_apikey
+
+:iflow_free
+set "PROV=iflow"
+set "PROV_NAME=iFlow 心流"
+set "DEFAULT_MODEL=deepseek-v3.2"
+set "KEY_URL=https://platform.iflow.cn"
 goto :ask_apikey
 
 :other_provider
