@@ -10,6 +10,7 @@ services:
       - "0.0.0.0:18789:18789"
     volumes:
       - ./config/workspace:/home/node/.openclaw/workspace
+      - ./工作区:/home/node/.openclaw/工作区
       - ./data/credentials:/home/node/.openclaw/credentials
       - ./data/sessions:/home/node/.openclaw/sessions
       - ./data/logs:/home/node/.openclaw/logs

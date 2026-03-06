@@ -8,7 +8,9 @@
 - **读取/写入/编辑** workspace/ 目录下的文件
 - 支持创建子目录和文件
 - 可用于记忆持久化（MEMORY.md、USER.md 等）
-- **限制**：仅限 workspace/ 目录，无法访问宿主机文件系统
+- **用户文件请保存到 `../工作区/`**（对应 U 盘 `PocketClaw/工作区/` 文件夹，与 workspace 完全隔离）
+- workspace/ 目录存放系统配置文件（AGENTS.md、SOUL.md 等），不要在这里创建用户文件
+- **限制**：仅限 workspace/ 及同级目录，无法访问宿主机文件系统
 
 ### 2. 网页浏览（Headless Browser）
 - 使用内置 Chromium 无头浏览器

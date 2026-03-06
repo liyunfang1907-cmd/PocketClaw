@@ -38,6 +38,10 @@ load_config() {
   ACTIVE_KEY="${OPENAI_API_KEY:-}"
   MODEL_ID="${OPENCLAW_MODEL:-}"
   AUTH_PASS="${GATEWAY_AUTH_PASSWORD:-pocketclaw}"
+  # 默认占位符时自动生成随机 8 位 token
+  if [ "$AUTH_PASS" = "pocketclaw" ]; then
+    AUTH_PASS=$(< /dev/urandom tr -dc 'a-zA-Z0-9' 2>/dev/null | head -c 8)
+  fi
 
   # 向后兼容：旧版 ZHIPU_API_KEY / docker-compose 默认空值
   if [[ -z "$ACTIVE_KEY" || "$ACTIVE_KEY" == "not-configured-yet" ]]; then

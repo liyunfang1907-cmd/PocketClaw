@@ -104,7 +104,8 @@ COPY --chown=node:node scripts/gateway-patch.py /app/scripts/gateway-patch.py
 RUN chmod +x /app/entrypoint.sh
 
 # ── 构建时注入 UI / 路由（read_only 容器运行时无法写入镜像层） ──
-RUN cp /app/config/mobile.html /usr/local/lib/node_modules/openclaw/dist/control-ui/mobile.html 2>/dev/null || true
+RUN cp /app/config/mobile.html /usr/local/lib/node_modules/openclaw/dist/control-ui/mobile.html 2>/dev/null || true \
+    && chown node:node /usr/local/lib/node_modules/openclaw/dist/control-ui/mobile.html 2>/dev/null || true
 RUN CONTROL_UI_DIR=/usr/local/lib/node_modules/openclaw/dist/control-ui \
     GW_DIR=/usr/local/lib/node_modules/openclaw/dist \
     python3 /app/scripts/gateway-patch.py 2>/dev/null || true

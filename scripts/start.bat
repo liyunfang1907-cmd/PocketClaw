@@ -309,7 +309,7 @@ set "VERSION_API_BACKUP=https://raw.githubusercontent.com/pocketclaw/pocketclaw/
 set "LATEST_VER="
 set "DOWNLOAD_URL="
 set "DOWNLOAD_URL_BACKUP="
-powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $u='%VERSION_API%'; try { $j = (Invoke-WebRequest -Uri $u -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop).Content | ConvertFrom-Json } catch { try { $j = (Invoke-WebRequest -Uri '%VERSION_API_BACKUP%' -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop).Content | ConvertFrom-Json } catch { $j=$null } }; if($j){ Write-Host $j.latest; Write-Host $j.download_url; if($j.download_url_backup){Write-Host $j.download_url_backup} }" > "%TEMP%\oc_ver.tmp" 2>nul
+powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $u='%VERSION_API%'; try { $j = (Invoke-WebRequest -Uri $u -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop).Content | ConvertFrom-Json } catch { try { $j = (Invoke-WebRequest -Uri '%VERSION_API_BACKUP%' -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop).Content | ConvertFrom-Json } catch { $j=$null } }; if($j){ $v=if($j.latest){$j.latest}elseif($j.version){$j.version}else{''}; Write-Host $v; Write-Host $j.download_url; if($j.download_url_backup){Write-Host $j.download_url_backup}; if($j.cos_url){Write-Host $j.cos_url} }" > "%TEMP%\oc_ver.tmp" 2>nul
 for /f "usebackq delims=" %%a in ("%TEMP%\oc_ver.tmp") do (
     if "!LATEST_VER!"=="" (
         set "LATEST_VER=%%a"
@@ -384,13 +384,13 @@ if "!LATEST_VER!"=="" (
                         copy /y "%%c" "%PROJECT_DIR%\config\" >nul 2>&1
                     )
                 )
-                REM 复制 config/workspace/ 下的 .md 文件
+                REM 复制 config\workspace/ 下的 .md 文件
                 if exist "!PAYLOAD!\config\workspace" (
                     for %%w in ("!PAYLOAD!\config\workspace\*.md") do (
                         copy /y "%%w" "%PROJECT_DIR%\config\workspace\" >nul 2>&1
                     )
                 )
-                REM 复制 config/workspace/skills/
+                REM 复制 config\workspace/skills/
                 if exist "!PAYLOAD!\config\workspace\skills" (
                     xcopy /s /y /q "!PAYLOAD!\config\workspace\skills\*" "%PROJECT_DIR%\config\workspace\skills\" >nul 2>&1
                 )
@@ -446,13 +446,13 @@ if "!LATEST_VER!"=="" (
                             copy /y "%%c" "%PROJECT_DIR%\config\" >nul 2>&1
                         )
                     )
-                    REM 复制 config/workspace/ 下的 .md 文件
+                    REM 复制 config\workspace/ 下的 .md 文件
                     if exist "!PAYLOAD!\config\workspace" (
                         for %%w in ("!PAYLOAD!\config\workspace\*.md") do (
                             copy /y "%%w" "%PROJECT_DIR%\config\workspace\" >nul 2>&1
                         )
                     )
-                    REM 复制 config/workspace/skills/
+                    REM 复制 config\workspace/skills/
                     if exist "!PAYLOAD!\config\workspace\skills" (
                         xcopy /s /y /q "!PAYLOAD!\config\workspace\skills\*" "%PROJECT_DIR%\config\workspace\skills\" >nul 2>&1
                     )

@@ -46,13 +46,13 @@ echo "  PocketClaw Doctor v${POCKETCLAW_VERSION}"
 echo "  自诊断修复工具"
 echo "============================================"
 echo ""
-echo "  正在检查 10 个诊断项..."
+echo "  正在检查 11 个诊断项..."
 echo ""
 
 # ══════════════════════════════════════════════
-# [1/10] Docker 安装
+# [1/11] Docker 安装
 # ══════════════════════════════════════════════
-echo -n "  [1/10] Docker 安装..."
+echo -n "  [1/11] Docker 安装..."
 if command -v docker &>/dev/null; then
     DOCKER_VER=$(docker --version 2>/dev/null | head -1)
     add_result pass "Docker 安装" "$DOCKER_VER"
@@ -71,10 +71,10 @@ else
 fi
 
 # ══════════════════════════════════════════════
-# [2/10] Docker 引擎运行
+# [2/11] Docker 引擎运行
 # ══════════════════════════════════════════════
 if [ "${SKIP_REST:-0}" != "1" ]; then
-echo -n "  [2/10] Docker 引擎..."
+echo -n "  [2/11] Docker 引擎..."
 if docker info &>/dev/null; then
     add_result pass "Docker 引擎" "运行中"
     echo " $PASS"
@@ -85,10 +85,10 @@ fi
 fi
 
 # ══════════════════════════════════════════════
-# [3/10] 镜像存在性
+# [3/11] 镜像存在性
 # ══════════════════════════════════════════════
 if [ "${SKIP_REST:-0}" != "1" ]; then
-echo -n "  [3/10] Docker 镜像..."
+echo -n "  [3/11] Docker 镜像..."
 if docker image inspect pocketclaw-pocketclaw:latest &>/dev/null; then
     IMG_SIZE=$(docker image inspect pocketclaw-pocketclaw:latest --format '{{.Size}}' 2>/dev/null)
     IMG_MB=$(( ${IMG_SIZE:-0} / 1024 / 1024 ))
@@ -101,10 +101,10 @@ fi
 fi
 
 # ══════════════════════════════════════════════
-# [4/10] 容器状态
+# [4/11] 容器状态
 # ══════════════════════════════════════════════
 if [ "${SKIP_REST:-0}" != "1" ]; then
-echo -n "  [4/10] 容器状态..."
+echo -n "  [4/11] 容器状态..."
 CONTAINER_STATUS=$(docker ps -a --filter "name=pocketclaw" --format "{{.Status}}" 2>/dev/null | head -1)
 if [ -z "$CONTAINER_STATUS" ]; then
     add_result fail "容器状态" "pocketclaw 容器不存在，需要运行启动器"
@@ -129,10 +129,10 @@ fi
 fi
 
 # ══════════════════════════════════════════════
-# [5/10] 端口 18789 与健康检查
+# [5/11] 端口 18789 与健康检查
 # ══════════════════════════════════════════════
 if [ "${SKIP_REST:-0}" != "1" ]; then
-echo -n "  [5/10] 服务端口..."
+echo -n "  [5/11] 服务端口..."
 if curl -sf --connect-timeout 3 --max-time 5 -o /dev/null http://127.0.0.1:18789/health 2>/dev/null; then
     add_result pass "服务端口" "18789 端口正常响应"
     echo " $PASS"
@@ -150,10 +150,10 @@ fi
 fi
 
 # ══════════════════════════════════════════════
-# [6/10] .provider 文件
+# [6/11] .provider 文件
 # ══════════════════════════════════════════════
 if [ "${SKIP_REST:-0}" != "1" ]; then
-echo -n "  [6/10] .provider 配置..."
+echo -n "  [6/11] .provider 配置..."
 PROVIDER_FILE="$PROJECT_DIR/config/workspace/.provider"
 if [ -f "$PROVIDER_FILE" ]; then
     # 检查必要字段
@@ -178,10 +178,10 @@ fi
 fi
 
 # ══════════════════════════════════════════════
-# [7/10] API Key 配置
+# [7/11] API Key 配置
 # ══════════════════════════════════════════════
 if [ "${SKIP_REST:-0}" != "1" ]; then
-echo -n "  [7/10] API Key..."
+echo -n "  [7/11] API Key..."
 API_KEY_FOUND=""
 # 优先从 .provider 读取
 if [ -f "$PROJECT_DIR/config/workspace/.provider" ]; then
@@ -208,10 +208,10 @@ fi
 fi
 
 # ══════════════════════════════════════════════
-# [8/10] .env 加密状态
+# [8/11] .env 加密状态
 # ══════════════════════════════════════════════
 if [ "${SKIP_REST:-0}" != "1" ]; then
-echo -n "  [8/10] 配置加密..."
+echo -n "  [8/11] 配置加密..."
 ENC_FILE="$PROJECT_DIR/secrets/.env.encrypted"
 ENV_FILE="$PROJECT_DIR/.env"
 if [ -f "$ENC_FILE" ]; then
@@ -232,10 +232,10 @@ fi
 fi
 
 # ══════════════════════════════════════════════
-# [9/10] 磁盘空间
+# [9/11] 磁盘空间
 # ══════════════════════════════════════════════
 if [ "${SKIP_REST:-0}" != "1" ]; then
-echo -n "  [9/10] 磁盘空间..."
+echo -n "  [9/11] 磁盘空间..."
 # 检查项目目录所在磁盘
 DISK_AVAIL=$(df -m "$PROJECT_DIR" 2>/dev/null | awk 'NR==2{print $4}')
 DOCKER_DISK=""
@@ -260,10 +260,10 @@ fi
 fi
 
 # ══════════════════════════════════════════════
-# [10/10] 容器日志分析
+# [10/11] 容器日志分析
 # ══════════════════════════════════════════════
 if [ "${SKIP_REST:-0}" != "1" ]; then
-echo -n "  [10/10] 容器日志..."
+echo -n "  [10/11] 容器日志..."
 CONTAINER_LOGS=""
 if docker ps --filter "name=pocketclaw" --format "{{.ID}}" 2>/dev/null | head -1 | grep -q .; then
     CONTAINER_LOGS=$(docker logs pocketclaw --tail 50 2>&1 || true)
@@ -286,6 +286,27 @@ else
 fi
 fi
 
+
+# ══════════════════════════════════════════════
+# [11/11] Docker 网络连通性
+# ══════════════════════════════════════════════
+if [ "${SKIP_REST:-0}" != "1" ]; then
+echo -n "  [11/11] Docker 网络..."
+if docker ps --filter "name=pocketclaw" --filter "status=running" --format "{{.ID}}" 2>/dev/null | head -1 | grep -q .; then
+    NET_OK=$(docker exec pocketclaw sh -c "curl -sf --connect-timeout 5 https://www.baidu.com -o /dev/null && echo OK" 2>/dev/null || true)
+    if [ "$NET_OK" = "OK" ]; then
+        add_result pass "Docker 网络" "容器可正常访问外网"
+        echo " $PASS"
+    else
+        add_result fail "Docker 网络" "容器无法连接外部网络，请检查 Docker 网络设置或代理"
+        echo " $FAIL 无法访问外网"
+    fi
+else
+    add_result warn "Docker 网络" "容器未运行，无法检测网络"
+    echo " $WARN 容器未运行"
+fi
+fi
+
 # ══════════════════════════════════════════════
 # 诊断结果汇总
 # ══════════════════════════════════════════════
@@ -299,43 +320,61 @@ printf "$REPORT"
 echo ""
 
 # ══════════════════════════════════════════════
-# AI 智能分析（有问题时自动触发）
+# AI 智能分析（始终运行）
 # ══════════════════════════════════════════════
-if [ "$FAILED" -gt 0 ] || [ "$WARNINGS" -gt 0 ]; then
-    echo ""
-    echo "--------------------------------------------"
-    echo "  $INFO AI 智能分析"
-    echo "--------------------------------------------"
-    echo ""
+echo ""
+echo "--------------------------------------------"
+echo "  $INFO AI 智能分析"
+echo "--------------------------------------------"
+echo ""
 
-    # 检查是否有 curl
-    if ! command -v curl &>/dev/null; then
-        echo "  [跳过] 需要 curl 命令才能调用 AI 分析"
-    else
-        # 从 .provider 或环境读取 iFlow API Key
-        AI_API_KEY=""
-        if [ -f "$PROJECT_DIR/config/workspace/.provider" ]; then
-            AI_API_KEY=$(grep '^API_KEY=' "$PROJECT_DIR/config/workspace/.provider" 2>/dev/null | cut -d= -f2 | tr -d ' \r')
-        fi
-        # 回退：从容器环境读取
-        if [ -z "$AI_API_KEY" ]; then
-            AI_API_KEY=$(docker exec pocketclaw sh -c 'echo $OPENAI_API_KEY' 2>/dev/null || true)
-        fi
-
-        if [ -z "$AI_API_KEY" ]; then
-            echo "  [跳过] 未找到 API Key，无法调用 AI 分析"
-            echo "         配置 API Key 后可获得智能故障分析"
+# 检查是否有 curl
+if ! command -v curl &>/dev/null; then
+    echo "  [跳过] 需要 curl 命令才能调用 AI 分析"
+else
+    # 从 .provider 或环境读取 iFlow API Key
+    AI_API_KEY=""
+    if [ -f "$PROJECT_DIR/config/workspace/.provider" ]; then
+        AI_API_KEY=$(grep '^API_KEY=' "$PROJECT_DIR/config/workspace/.provider" 2>/dev/null | cut -d= -f2 | tr -d ' \r')
+    fi
+    # 回退：从容器环境读取
+    if [ -z "$AI_API_KEY" ]; then
+        AI_API_KEY=$(docker exec pocketclaw sh -c 'echo $OPENAI_API_KEY' 2>/dev/null || true)
+    fi
+    # 无 Key 时提示用户输入
+    if [ -z "$AI_API_KEY" ] || [ "$AI_API_KEY" = "not-configured-yet" ]; then
+        echo "  [提示] 未检测到已配置的 API Key"
+        echo ""
+        echo "  请输入 API Key 以启用 AI 分析（支持 OpenAI 兼容 API）"
+        echo "  获取免费 Key: https://cloud.siliconflow.cn"
+        echo "  （直接按回车跳过 AI 分析）"
+        echo ""
+        printf "  API Key: "
+        read -r USER_KEY
+        if [ -n "$USER_KEY" ]; then
+            AI_API_KEY="$USER_KEY"
         else
-            echo "  正在调用 AI 分析问题原因和修复建议..."
-            echo ""
+            echo "  [跳过] 未提供 API Key，跳过 AI 分析"
+            AI_API_KEY=""
+        fi
+    fi
 
-            # 收集系统信息
-            SYS_INFO="OS: $(uname -s) $(uname -m)"
-            SYS_INFO+=", Docker: $(docker --version 2>/dev/null | head -c 40 || echo N/A)"
-            SYS_INFO+=", Version: $POCKETCLAW_VERSION"
+    if [ -z "$AI_API_KEY" ]; then
+        # 用户选择跳过 AI 分析，直接跳到后续步骤
+        :
+    else
 
-            # 构造 AI prompt
-            AI_PROMPT="你是 PocketClaw 项目的技术支持专家。用户运行了自诊断工具，发现以下问题：
+    echo "  正在调用 AI 分析..."
+    echo ""
+
+    # 收集系统信息
+    SYS_INFO="OS: $(uname -s) $(uname -m)"
+    SYS_INFO+=", Docker: $(docker --version 2>/dev/null | head -c 40 || echo N/A)"
+    SYS_INFO+=", Version: $POCKETCLAW_VERSION"
+
+    # 构造 AI prompt
+    if [ -n "$PROBLEMS" ]; then
+        AI_PROMPT="你是 PocketClaw 项目的技术支持专家。用户运行了自诊断工具，发现以下问题：
 
 系统信息: $SYS_INFO
 
@@ -350,9 +389,23 @@ $(if [ -n "$CONTAINER_LOGS" ]; then echo "最近容器日志(最后20行):"; ech
 3. 如果有自动修复方案，说明修复命令
 
 要求：简洁实用，不要客套话，直接给修复方案。用纯文本格式，不要 Markdown。"
+    else
+        AI_PROMPT="你是 PocketClaw 项目的技术支持专家。用户运行了自诊断工具，所有 $TOTAL 项检查均通过。
 
-            # 转义 JSON（用 python3 处理特殊字符）
-            AI_JSON=$(python3 -c "
+系统信息: $SYS_INFO
+
+$(if [ -n "$CONTAINER_LOGS" ]; then echo "最近容器日志(最后20行):"; echo "$CONTAINER_LOGS" | tail -20; fi)
+
+请用中文回复：
+1. 确认系统状态良好
+2. 给出 2-3 条优化建议或日常维护提示
+3. 如果日志中有任何潜在隐患，指出来
+
+要求：简洁实用，用纯文本格式，不要 Markdown。"
+    fi
+
+    # 转义 JSON（用 python3 处理特殊字符）
+    AI_JSON=$(python3 -c "
 import json, sys
 prompt = sys.stdin.read()
 payload = {
@@ -364,14 +417,14 @@ payload = {
 print(json.dumps(payload))
 " <<< "$AI_PROMPT" 2>/dev/null)
 
-            if [ -n "$AI_JSON" ]; then
-                AI_RESPONSE=$(curl -s --max-time 30 \
-                    -X POST "https://apis.iflow.cn/v1/chat/completions" \
-                    -H "Content-Type: application/json" \
-                    -H "Authorization: Bearer $AI_API_KEY" \
-                    -d "$AI_JSON" 2>/dev/null)
+    if [ -n "$AI_JSON" ]; then
+        AI_RESPONSE=$(curl -s --max-time 30 \
+            -X POST "https://apis.iflow.cn/v1/chat/completions" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $AI_API_KEY" \
+            -d "$AI_JSON" 2>/dev/null)
 
-                AI_REPLY=$(echo "$AI_RESPONSE" | python3 -c "
+        AI_REPLY=$(echo "$AI_RESPONSE" | python3 -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
@@ -380,19 +433,76 @@ except:
     print('AI 分析暂时不可用（API 调用失败）')
 " 2>/dev/null)
 
-                if [ -n "$AI_REPLY" ]; then
-                    echo "  ┌─ AI 分析结果 ─────────────────────────┐"
-                    echo ""
-                    echo "$AI_REPLY" | sed 's/^/  /'
-                    echo ""
-                    echo "  └───────────────────────────────────────┘"
-                fi
-            else
-                echo "  [跳过] 无法构造 AI 请求（需要 python3）"
-            fi
+        if [ -n "$AI_REPLY" ]; then
+            echo "  ┌─ AI 分析结果 ─────────────────────────┐"
+            echo ""
+            echo "$AI_REPLY" | sed 's/^/  /'
+            echo ""
+            echo "  └───────────────────────────────────────┘"
         fi
+    else
+        echo "  [跳过] 无法构造 AI 请求（需要 python3）"
     fi
+
+    fi  # end if [ -z "$AI_API_KEY" ]
 fi
+
+# ══════════════════════════════════════════════
+# AI 对话模式
+# ══════════════════════════════════════════════
+echo ""
+echo "  如需进一步咨询，可与 AI 继续对话"
+printf "  是否开启对话模式？(y/N): "
+read -r CHAT_CHOICE
+if [ "$CHAT_CHOICE" = "y" ] || [ "$CHAT_CHOICE" = "Y" ]; then
+    while true; do
+        echo ""
+        printf "  你的问题 (输入 q 退出): "
+        read -r USER_Q
+        if [ -z "$USER_Q" ] || [ "$USER_Q" = "q" ] || [ "$USER_Q" = "quit" ] || [ "$USER_Q" = "exit" ]; then
+            echo "  对话结束"
+            break
+        fi
+        echo "  正在分析..."
+        CHAT_PROMPT="你是 PocketClaw 技术支持专家。用户问题: $USER_Q 系统: $SYS_INFO"
+        if [ -n "$PROBLEMS" ]; then
+            CHAT_PROMPT="$CHAT_PROMPT 已知问题: $(printf "$PROBLEMS")"
+        fi
+        CHAT_JSON=$(python3 -c "
+import json, sys
+prompt = sys.stdin.read()
+payload = {
+    'model': 'qwen3-coder-plus',
+    'messages': [{'role': 'user', 'content': prompt}],
+    'max_tokens': 1000,
+    'temperature': 0.3
+}
+print(json.dumps(payload))
+" <<< "$CHAT_PROMPT" 2>/dev/null)
+        if [ -n "$CHAT_JSON" ]; then
+            CHAT_RESP=$(curl -s --max-time 30 \
+                -X POST "https://apis.iflow.cn/v1/chat/completions" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer $AI_API_KEY" \
+                -d "$CHAT_JSON" 2>/dev/null)
+            CHAT_REPLY=$(echo "$CHAT_RESP" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    print(data['choices'][0]['message']['content'])
+except:
+    print('AI 分析暂时不可用')
+" 2>/dev/null)
+            echo ""
+            echo "  --- AI 回复 ---"
+            echo "$CHAT_REPLY" | sed 's/^/  /'
+            echo "  ----------------"
+        else
+            echo "  [错误] 无法构造请求"
+        fi
+    done
+fi
+
 
 # ══════════════════════════════════════════════
 # 自动修复（有可修复问题时提示）

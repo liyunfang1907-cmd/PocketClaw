@@ -9,7 +9,7 @@ REM
 REM 朋友收到更新包后，解压并双击此文件即可安装。
 REM 自动搜索 U 盘 → 创建回滚备份 → 安装更新 → 可选重启
 REM
-REM 不会覆盖: secrets/ data/ .env openclaw-src/ config/workspace/
+REM 不会覆盖: secrets/ data/ .env openclaw-src/ config\workspace/
 REM ============================================================
 
 set "INSTALLER_DIR=%~dp0"

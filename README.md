@@ -30,7 +30,7 @@
 │  │   └── .env.encrypted          ← 加密的敏感配置        │
 │  ├── config/                                            │
 │  │   ├── openclaw.json           ← PocketClaw 主配置       │
-│  │   └── workspace/              ← Agent 工作区          │
+│  │   └── workspace/              ← Agent config/workspace          │
 │  ├── data/                                              │
 │  │   ├── credentials/            ← 频道凭证 (加密)       │
 │  │   └── sessions/               ← 会话数据              │
@@ -74,7 +74,7 @@ PocketClaw/
 │
 ├── config/
 │   ├── openclaw.json                  # PocketClaw 主配置文件
-│   └── workspace/                     # Agent 工作区
+│   └── workspace/                     # Agent config/workspace
 │       ├── AGENTS.md                  # Agent 行为指令
 │       ├── SOUL.md                    # Agent 人格设定
 │       └── skills/                    # 已安装的 Skills
@@ -723,7 +723,7 @@ PocketClaw_Update_v1.0.2/
 
 需要备份的关键文件：
 - `config/openclaw.json` — 主配置
-- `config/workspace/` — Agent 工作区和 Skills
+- `config/workspace/` — Agent config/workspace和 Skills
 - `secrets/.env.encrypted` — 加密的敏感配置
 - `data/credentials/` — 频道凭证
 - `docker-compose.yml` — 容器编排配置

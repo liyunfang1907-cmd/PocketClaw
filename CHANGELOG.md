@@ -2,6 +2,13 @@
 
 All notable changes to PocketClaw will be documented in this file.
 
+## [1.3.1] - 2026-03-06
+
+### Fixed
+- 修复手机扫码页面 Internal Server Error（Dockerfile 中 mobile.html 复制后未 chown 给 node 用户）
+- macOS 控制面板状态显示优化：地址始终带 Token、新增手机访问地址和模型健康状态
+- Docker 幽影容器防护：docker run 失败时自动用备用容器名重试
+
 ## [1.2.4] - 2026-03-04
 
 ### Security

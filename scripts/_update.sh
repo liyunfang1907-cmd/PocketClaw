@@ -19,8 +19,11 @@ check_and_update() {
         VERSION_JSON=$(curl -sf --connect-timeout 5 "$VERSION_API" 2>/dev/null || \
                        curl -sf --connect-timeout 5 "$VERSION_API_BACKUP" 2>/dev/null || true)
         if [ -n "$VERSION_JSON" ]; then
+            # 兼容 "latest" 和 "version" 两种字段名
             LATEST_VER=$(echo "$VERSION_JSON" | grep -o '"latest"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            [ -z "$LATEST_VER" ] && LATEST_VER=$(echo "$VERSION_JSON" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
             DOWNLOAD_URL=$(echo "$VERSION_JSON" | grep -o '"download_url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            [ -z "$DOWNLOAD_URL" ] && DOWNLOAD_URL=$(echo "$VERSION_JSON" | grep -o '"cos_url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
             DOWNLOAD_URL_BACKUP=$(echo "$VERSION_JSON" | grep -o '"download_url_backup"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
         fi
     fi

@@ -56,18 +56,32 @@ show_status() {
         if [ -f "$PROJECT_DIR/config/workspace/.gateway_token" ]; then
             token=$(cat "$PROJECT_DIR/config/workspace/.gateway_token" 2>/dev/null | tr -d '\n\r')
         fi
-        if [ -n "$token" ]; then
-            echo -e "  ${CYAN}[地址] http://127.0.0.1:18789/#token=${token}${RESET}"
-        else
-            echo -e "  ${CYAN}[地址] http://127.0.0.1:18789/${RESET}"
-            echo -e "  ${YELLOW}[提示] Token 未知，请通过菜单 [1] 重新启动获取${RESET}"
+        # 如果宿主机文件不存在，从容器内读取
+        if [ -z "$token" ]; then
+            token=$(docker exec pocketclaw cat /home/node/.openclaw/workspace/.gateway_token 2>/dev/null | tr -d '\n\r')
         fi
-        # B3: 显示当前提供商和模型
+        echo -e "  ${CYAN}[地址] http://127.0.0.1:18789/#token=${token:-pocketclaw}${RESET}"
+        # 检测局域网 IP（手机访问）
+        local lan_ip=""
+        if command -v ifconfig &>/dev/null; then
+            lan_ip=$(ifconfig | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | head -1)
+        fi
+        if [ -n "$lan_ip" ]; then
+            echo -e "  ${CYAN}[手机] http://${lan_ip}:18789/mobile.html#token=${token:-pocketclaw}${RESET}"
+        fi
+        # 显示当前提供商和模型
         if [ -f "$PROJECT_DIR/config/workspace/.provider" ]; then
             local prov_name model_id
             prov_name=$(grep '^PROVIDER_NAME=' "$PROJECT_DIR/config/workspace/.provider" 2>/dev/null | cut -d= -f2 | xargs)
             model_id=$(grep '^MODEL_ID=' "$PROJECT_DIR/config/workspace/.provider" 2>/dev/null | cut -d= -f2 | xargs)
-            [ -n "$prov_name" ] && echo -e "  ${CYAN}[模型] ${prov_name} / ${model_id:-默认}${RESET}"
+            if [ -n "$prov_name" ]; then
+                # API 健康检查
+                if curl -sf --connect-timeout 2 --max-time 3 -o /dev/null http://127.0.0.1:18789/health 2>/dev/null; then
+                    echo -e "  ${CYAN}[模型] ${prov_name} / ${model_id:-默认}  [正常]${RESET}"
+                else
+                    echo -e "  ${CYAN}[模型] ${prov_name} / ${model_id:-默认}  ${RED}[异常]${RESET}"
+                fi
+            fi
         fi
     else
         echo -e "  [状态] PocketClaw 未运行"

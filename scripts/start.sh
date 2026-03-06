@@ -420,9 +420,12 @@ if command -v curl &>/dev/null; then
     VERSION_JSON=$(curl -sf --connect-timeout 5 "$VERSION_API" 2>/dev/null || \
                    curl -sf --connect-timeout 5 "$VERSION_API_BACKUP" 2>/dev/null || true)
     if [ -n "$VERSION_JSON" ]; then
-        LATEST_VER=$(echo "$VERSION_JSON" | grep -o '"latest"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
-        DOWNLOAD_URL=$(echo "$VERSION_JSON" | grep -o '"download_url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
-        DOWNLOAD_URL_BACKUP=$(echo "$VERSION_JSON" | grep -o '"download_url_backup"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+        # 兼容 "latest" 和 "version" 两种字段名
+        LATEST_VER=$(echo "$VERSION_JSON" | grep -o '"latest"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/' || true)
+        [ -z "$LATEST_VER" ] && LATEST_VER=$(echo "$VERSION_JSON" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/' || true)
+        DOWNLOAD_URL=$(echo "$VERSION_JSON" | grep -o '"download_url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/' || true)
+        [ -z "$DOWNLOAD_URL" ] && DOWNLOAD_URL=$(echo "$VERSION_JSON" | grep -o '"cos_url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/' || true)
+        DOWNLOAD_URL_BACKUP=$(echo "$VERSION_JSON" | grep -o '"download_url_backup"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/' || true)
     fi
 fi
 
@@ -672,31 +675,43 @@ else
     docker network create pocketclaw_pocketclaw-net >> "$BUILD_LOG" 2>&1 || true
 
     # 直接 docker run（与 docker-compose.yml 保持相同安全策略）
-    docker run -d \
-        --name pocketclaw \
-        --restart unless-stopped \
-        --network pocketclaw_pocketclaw-net \
-        -p 0.0.0.0:18789:18789 \
-        -v "$PROJECT_DIR/config/workspace:/home/node/.openclaw/workspace" \
-        -v "$PROJECT_DIR/data/credentials:/home/node/.openclaw/credentials" \
-        -v "$PROJECT_DIR/data/sessions:/home/node/.openclaw/sessions" \
-        -v "$PROJECT_DIR/data/logs:/home/node/.openclaw/logs" \
-        -v "$PROJECT_DIR/data/skills:/home/node/.openclaw/skills" \
-        --read-only \
-        --security-opt no-new-privileges:true \
-        --cap-drop ALL \
-        --memory 2g \
-        --pids-limit 128 \
-        --tmpfs /tmp:size=100M,noexec,nosuid \
-        --tmpfs /home/node/.npm:size=50M \
-        --tmpfs /var/log:size=50M \
-        --tmpfs /home/node/.openclaw:size=100M \
-        --env-file "$PROJECT_DIR/.env" \
-        -e "GATEWAY_AUTH_PASSWORD=$GATEWAY_AUTH_PASSWORD" \
-        "$IMAGE_NAME" >> "$BUILD_LOG" 2>&1
+    # 如果容器名冲突（幽灵容器无法删除），自动使用备用名
+    CONTAINER_NAME="pocketclaw"
+    _run_docker_container() {
+        docker run -d \
+            --name "$1" \
+            --restart unless-stopped \
+            --network pocketclaw_pocketclaw-net \
+            -p 0.0.0.0:18789:18789 \
+            -v "$PROJECT_DIR/config/workspace:/home/node/.openclaw/workspace" \
+            -v "$PROJECT_DIR/工作区:/home/node/.openclaw/工作区" \
+            -v "$PROJECT_DIR/data/credentials:/home/node/.openclaw/credentials" \
+            -v "$PROJECT_DIR/data/sessions:/home/node/.openclaw/sessions" \
+            -v "$PROJECT_DIR/data/logs:/home/node/.openclaw/logs" \
+            -v "$PROJECT_DIR/data/skills:/home/node/.openclaw/skills" \
+            --read-only \
+            --security-opt no-new-privileges:true \
+            --cap-drop ALL \
+            --memory 2g \
+            --pids-limit 128 \
+            --tmpfs /tmp:size=100M,noexec,nosuid \
+            --tmpfs /home/node/.npm:size=50M,uid=1000,gid=1000 \
+            --tmpfs /var/log:size=50M \
+            --tmpfs /home/node/.openclaw:size=100M,uid=1000,gid=1000 \
+            --env-file "$PROJECT_DIR/.env" \
+            -e "GATEWAY_AUTH_PASSWORD=$GATEWAY_AUTH_PASSWORD" \
+            "$IMAGE_NAME" >> "$BUILD_LOG" 2>&1
+    }
+
+    if ! _run_docker_container "$CONTAINER_NAME"; then
+        # 容器名被幽灵容器占用，使用备用名重试
+        echo "[信息] 检测到容器名冲突，使用备用名启动..."
+        CONTAINER_NAME="pocketclaw-$(date +%s)"
+        _run_docker_container "$CONTAINER_NAME" >> "$BUILD_LOG" 2>&1 || true
+    fi
 
     sleep 3
-    if docker ps --filter "name=pocketclaw" --format "{{.Status}}" 2>/dev/null | grep -qi "up"; then
+    if docker ps --filter "name=$CONTAINER_NAME" --format "{{.Status}}" 2>/dev/null | grep -qi "up"; then
         echo "[OK] 容器启动成功（备用方式）"
     else
         echo ""
@@ -705,9 +720,10 @@ else
         echo "  可能原因:"
         echo "  1. 端口 18789 被占用 → 关闭占用该端口的程序"
         echo "  2. 磁盘空间不足 → docker system prune"
-        echo "  3. Docker 数据损坏 → 打开 Docker Desktop → 设置 → Reset to factory defaults"
+        echo "  3. Docker 内部数据损坏 → 停止 Docker Desktop → 删除"
+        echo "     ~/Library/Containers/com.docker.docker/Data/vms (Mac)"
+        echo "     或 Docker Desktop → 设置 → 重置 → Clean/Purge data (Windows)"
         echo ""
-        echo "  详细排查指南: https://pocketclaw.cn/#faq"
         exit 1
     fi
 fi
