@@ -11,7 +11,7 @@ check_and_update() {
     POCKETCLAW_VERSION=$(cat "$PROJECT_DIR/VERSION" 2>/dev/null || echo "unknown")
     echo "[信息] 正在检查更新..."
 
-    local VERSION_API="https://pocketclaw-1380766547.cos.ap-beijing.myqcloud.com/version.json"
+    local VERSION_API="https://pocketclaw.cn/downloads/version.json"
     local VERSION_API_BACKUP="https://raw.githubusercontent.com/pocketclaw/pocketclaw/main/version.json"
     local LATEST_VER="" DOWNLOAD_URL="" DOWNLOAD_URL_BACKUP="" VERSION_JSON=""
 

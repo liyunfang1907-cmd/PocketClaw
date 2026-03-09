@@ -52,16 +52,18 @@ echo     [3]  打开网页版
 echo     [4]  切换模型/API Key
 echo     [5]  备份数据
 echo     [6]  自诊断修复
+echo     [7]  检查更新
 echo     [0]  退出
 echo.
 echo   --------------------------------------------
-set /p "CHOICE=  请选择 [0-6]: "
+set /p "CHOICE=  请选择 [0-7]: "
 if "!CHOICE!"=="1" goto :do_start
 if "!CHOICE!"=="2" goto :do_stop
 if "!CHOICE!"=="3" goto :do_open
 if "!CHOICE!"=="4" goto :do_change_api
 if "!CHOICE!"=="5" goto :do_backup
 if "!CHOICE!"=="6" goto :do_doctor
+if "!CHOICE!"=="7" goto :do_update
 if "!CHOICE!"=="0" goto :do_exit
 echo.
 echo   [提示] 无效选择，请重新输入。
@@ -124,6 +126,28 @@ REM ============================================================
 :do_doctor
 cls
 call "%PROJECT_DIR%\scripts\doctor.bat"
+echo.
+set /p "GO_BACK=  按回车键返回菜单，输入 q 退出: "
+if /i "!GO_BACK!"=="q" goto :do_exit
+goto :menu
+
+REM ============================================================
+REM  检查更新
+REM ============================================================
+:do_update
+cls
+call "%PROJECT_DIR%\scripts\update.bat"
+echo.
+set /p "GO_BACK=  按回车键返回菜单，输入 q 退出: "
+if /i "!GO_BACK!"=="q" goto :do_exit
+goto :menu
+
+REM ============================================================
+REM  检查更新
+REM ============================================================
+:do_update
+cls
+call "%PROJECT_DIR%\scripts\update.bat"
 echo.
 set /p "GO_BACK=  按回车键返回菜单，输入 q 退出: "
 if /i "!GO_BACK!"=="q" goto :do_exit

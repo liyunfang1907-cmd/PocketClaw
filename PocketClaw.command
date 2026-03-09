@@ -115,6 +115,7 @@ show_menu() {
     echo "    [4]  切换模型/API Key"
     echo "    [5]  备份数据"
     echo "    [6]  自诊断修复"
+    echo "    [7]  检查更新"
     echo ""
     echo "    [0]  退出"
     echo ""
@@ -204,11 +205,22 @@ do_doctor() {
 }
 
 # ============================================================
+#  检查更新
+# ============================================================
+do_update() {
+    clear
+    source "$PROJECT_DIR/scripts/_update.sh"
+    check_and_update "$PROJECT_DIR"
+    echo ""
+    read -rp "  按回车返回菜单..." _
+}
+
+# ============================================================
 #  主循环
 # ============================================================
 while true; do
     show_menu
-    read -rp "  请选择 [0-6]: " CHOICE
+    read -rp "  请选择 [0-7]: " CHOICE
     case "$CHOICE" in
         1) do_start ;;
         2) do_stop ;;
@@ -216,6 +228,7 @@ while true; do
         4) do_change_api ;;
         5) do_backup ;;
         6) do_doctor ;;
+        7) do_update ;;
         0) echo ""; echo "  再见！"; exit 0 ;;
         *) echo "  无效选择"; sleep 1 ;;
     esac

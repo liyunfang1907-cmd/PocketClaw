@@ -2,6 +2,23 @@
 
 All notable changes to PocketClaw will be documented in this file.
 
+## [1.3.2] - 2026-03-09
+
+### Added
+- 网站添加 ICP 备案号（京ICP备2026010038号-1）
+- 网站新增 iFlow 心流 API Key 获取教程（放在智谱教程之前）
+- PocketClaw.bat 和 .command 新增 [7] 检查更新菜单项
+
+### Changed
+- 版本检查 API 从腾讯 COS 迁移至自有服务器（pocketclaw.cn/downloads/version.json）
+- 版本更新从启动时自动检查改为菜单手动检查
+- 重写 update.bat 为完整版本检查+下载安装逻辑
+- 网站 hero badges 移除 emoji 图标，仅保留文字
+
+### Removed
+- start.sh 和 start.bat 中的自动版本检查块
+- version.json 中的 cos_url 字段（不再同步腾讯 COS）
+
 ## [1.3.1] - 2026-03-06
 
 ### Fixed
