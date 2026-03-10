@@ -8,7 +8,7 @@
 
 所有操作都支持中文提示，不需要任何编程知识。
 支持 Windows、macOS、Linux 三平台，U 盘跨平台无缝切换。
-支持 12 种 AI 模型提供商，默认使用 iFlow 心流（免费额度）。
+支持 12 种 AI 模型提供商，推荐使用 iFlow 心流（免费额度），备选智谱 GLM-4.7-Flash（永久免费）。
 
 
 =====================================================================
@@ -74,6 +74,7 @@
 【Windows 脚本速查】
 
   PocketClaw.bat              统一菜单启动器（推荐入口）
+  Doctor.bat                  独立诊断入口（双击即用）
   scripts\setup-env.bat       首次配置向导
   scripts\encrypt.bat         加密 .env
   scripts\decrypt.bat         解密 .env
@@ -191,6 +192,7 @@
 【macOS 脚本速查】
 
   PocketClaw.command                  统一菜单启动器（推荐入口）
+  Doctor.command                      独立诊断入口（双击即用）
   bash scripts/setup-env.sh          首次配置向导
   bash scripts/encrypt-secrets.sh    加密 .env
   bash scripts/decrypt-secrets.sh    解密 .env
@@ -435,8 +437,8 @@
   Signal、Google Chat、Microsoft Teams、Matrix、BlueBubbles (iMessage)、Zalo
 
   配置方法：
-    Windows: 双击 PocketClaw.bat → 选 [4] → 按提示操作
-    macOS:   双击 PocketClaw.command → 选 [4]
+    macOS/Linux: bash scripts/setup-channels.sh
+    Windows:     scripts\setup-channels.bat
     手动:    bash scripts/setup-channels.sh
 
   配置后重启服务即可生效。
@@ -447,7 +449,8 @@
   七、故障自助排除指南
 =====================================================================
 
-  遇到错误时，推荐先使用菜单 [6] 自诊断修复，自动运行 11 项检查并修复常见问题。
+  遍到错误时，推荐先使用菜单 [6] 自诊断修复（或直接双击 Doctor.bat / Doctor.command），
+  自动运行 11 项检查并调用 AI 智能分析给出修复建议。
   如仍无法解决，按以下步骤逐一排查：
 
   【第 1 步：检查 Docker 是否在运行】

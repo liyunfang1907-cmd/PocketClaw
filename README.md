@@ -12,10 +12,11 @@
 - **数据自包含**：所有配置、数据、凭证均存储在 U 盘内
 - **高安全性**：AES-256-CBC 加密存储，容器安全加固，明文自动擦除
 - **多提供商**：支持 12 家 AI 提供商（iFlow、智谱、DeepSeek、OpenAI、Claude 等）
-- **免费可用**：默认使用智谱 GLM-4.7-Flash（永久免费、200K 上下文）
+- **免费可用**：推荐 iFlow 心流（免费额度、多模型聚合），备选智谱 GLM-4.7-Flash（永久免费）
 - **手机访问**：局域网内手机/平板直接使用，支持 PWA 添加到主屏幕
 - **全自动化**：Docker、WSL2、Git 自动安装，镜像加速自动配置
 - **一键更新**：菜单内检查更新，自动下载安装新版本
+- **自诊断修复**：11 项自动检查 + AI 智能分析，独立 Doctor 入口
 
 ---
 
@@ -27,6 +28,7 @@
 │                                                         │
 │  PocketClaw/                                            │
 │  ├── PocketClaw.bat / .command   ← 双击启动（统一入口）  │
+│  ├── Doctor.bat / .command       ← 双击诊断（独立入口）  │
 │  ├── docker-compose.yml          ← 容器编排配置          │
 │  ├── Dockerfile.custom           ← 自定义镜像构建        │
 │  ├── VERSION                     ← 版本号（更新使用）    │
@@ -68,6 +70,8 @@
 PocketClaw/
 ├── PocketClaw.bat                     # Windows 统一菜单启动器
 ├── PocketClaw.command                 # macOS 统一菜单启动器
+├── Doctor.bat                         # Windows 独立诊断入口
+├── Doctor.command                     # macOS 独立诊断入口
 ├── README.md                          # 本文件（项目说明）
 ├── 使用指南.txt                       # 用户使用指南
 ├── CHANGELOG.md                       # 版本变更记录
@@ -77,12 +81,16 @@ PocketClaw/
 ├── docker-compose.yml                 # Docker 容器编排主文件
 ├── Dockerfile.custom                  # 自定义镜像构建
 │
+├── .editorconfig                      # 编辑器配置（UTF-8、LF、缩进）
 ├── .env.example                       # 环境变量模板（不含敏感信息）
 ├── .env.channels.example             # 频道配置变量参考
+│
+├── .github/workflows/                 # CI/CD 流程
 │
 ├── config/
 │   ├── openclaw.json                  # 主配置文件（模型、Gateway 等）
 │   ├── providers.json                 # 12 家 AI 提供商配置
+│   ├── doctor-system-prompt.txt       # Doctor AI 诊断提示词
 │   ├── mobile.html                    # 手机聊天界面（PWA）
 │   ├── setup.html                     # Web 配置界面
 │   └── workspace/                     # Agent 内部工作空间
@@ -400,6 +408,9 @@ history -c
   [地址] http://127.0.0.1:18789/#token=xxx
   [手机] http://192.168.0.x:18789/mobile.html#token=xxx
   [模型] iFlow 心流 / deepseek-v3.2  [正常]
+  [加密] 已配置
+
+  --------------------------------------------
 
     [1]  启动 PocketClaw
     [2]  停止 PocketClaw（拔U盘前必须先停止）
@@ -408,7 +419,10 @@ history -c
     [5]  备份数据
     [6]  自诊断修复
     [7]  检查更新
+
     [0]  退出
+
+  --------------------------------------------
 ```
 
 ### 9.2 启动与停止
@@ -429,8 +443,10 @@ bash scripts/stop.sh      # 停止
 
 ### 9.4 自诊断修复
 
-选菜单 [6]，运行 11 项自动检查：Docker 安装、引擎运行、镜像存在、容器状态、
-端口响应、配置完整性、API 可用性、日志分析等。自动生成诊断报告。
+选菜单 [6]，或直接双击 `Doctor.bat`（Windows）/ `Doctor.command`（macOS），运行 11 项自动检查：
+Docker 安装、引擎运行、镜像存在、容器状态、端口响应、配置完整性、API 可用性、
+加密状态、磁盘空间、日志分析、网络连通性。检查完成后调用 AI 智能分析问题并给出修复建议，
+支持后续对话追问。自动生成诊断报告保存到 `data/logs/`。
 
 ### 9.5 检查更新
 
@@ -598,16 +614,7 @@ bash scripts/stop.sh && bash scripts/start.sh
 4. 解压并覆盖脚本/配置（保留用户数据不动）
 5. 清理构建缓存，下次启动自动重建镜像
 
-### 13.2 手动更新包安装
-
-也可以通过线下分发更新包：
-
-1. 收到 ZIP 更新包
-2. 解压到任意位置
-3. 双击 `install-update.bat`（Windows）或运行 `bash install-update.sh`（Mac）
-4. 安装器自动定位 U 盘 → 备份旧文件 → 安装新版本
-
-### 13.3 更新保护策略
+### 13.2 更新保护策略
 
 | 目录/文件 | 更新时行为 | 原因 |
 |-----------|-----------|------|
