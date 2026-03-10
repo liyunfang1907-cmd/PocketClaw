@@ -22,6 +22,23 @@ echo.
 docker --version >nul 2>&1
 if !ERRORLEVEL! equ 0 goto :docker_exists
 
+:: PATH 里没找到，检查默认安装路径（重启后 PATH 可能未刷新）
+if exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" (
+    set "PATH=C:\Program Files\Docker\Docker\resources\bin;%PATH%"
+    docker --version >nul 2>&1
+    if !ERRORLEVEL! equ 0 (
+        echo [信息] Docker 已安装，正在刷新环境路径...
+        goto :docker_exists
+    )
+)
+
+:: 检查是否有上次未完成的安装（WSL2 刚重启完成）
+if exist "%PROJECT_DIR%\data\.wsl2_restart_pending" (
+    del /q "%PROJECT_DIR%\data\.wsl2_restart_pending"
+    echo [信息] WSL2 已就绪，继续安装 Docker Desktop...
+    goto :wsl_ok
+)
+
 :: Docker 未安装，进入安装流程
 echo [信息] 未检测到 Docker，准备自动安装...
 
@@ -30,11 +47,14 @@ wsl --status >nul 2>&1
 if !ERRORLEVEL! equ 0 goto :wsl_ok
 echo [信息] 正在启用 WSL2（需要管理员权限）...
 powershell -Command "Start-Process -Verb RunAs -Wait -FilePath 'wsl.exe' -ArgumentList '--install --no-distribution'"
-if !ERRORLEVEL! neq 0 (
-    echo [警告] WSL2 启用可能需要重启电脑。
-) else (
-    echo [OK] WSL2 已启用
-)
+:: WSL2 启用后需要重启才能生效，先重启再安装 Docker
+echo WSL2_PENDING> "%PROJECT_DIR%\data\.wsl2_restart_pending"
+echo.
+echo [重要] WSL2 已启用，需要重启电脑才能生效。
+echo        重启后请再次运行本脚本，将自动继续安装 Docker Desktop。
+echo.
+pause
+exit /b 0
 
 :wsl_ok
 :: 检查是否有离线安装包
@@ -126,11 +146,39 @@ echo [OK] Docker Desktop 安装完成！
 echo.
 :: 清理临时下载文件
 if exist "%TEMP%\PocketClaw\DockerDesktopInstaller.exe" del /q "%TEMP%\PocketClaw\DockerDesktopInstaller.exe"
-echo [重要] 首次安装 Docker 后需要重启电脑以启用 WSL2。
-echo        请重启电脑后再次运行本脚本。
+:: 将 Docker 加入当前会话 PATH
+set "PATH=C:\Program Files\Docker\Docker\resources\bin;%PATH%"
+:: 尝试启动 Docker Desktop 而不是直接要求重启
+echo [信息] 正在启动 Docker Desktop（首次启动可能较慢）...
+start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
 echo.
-pause
-exit /b 0
+set "FIRST_WAIT=0"
+<nul set /p "=  首次启动 ["
+
+:first_start_wait
+timeout /t 5 /nobreak >nul
+set /a "FIRST_WAIT+=5"
+docker info >nul 2>&1
+if !ERRORLEVEL! equ 0 goto :first_start_ok
+if !FIRST_WAIT! geq 180 (
+    echo ]
+    echo.
+    echo [提示] Docker Desktop 首次启动需要更多时间。
+    echo        请重启电脑后再次运行本脚本。
+    echo.
+    pause
+    exit /b 0
+)
+set /a "FW_PCT=FIRST_WAIT*100/180"
+title PocketClaw - 首次启动 Docker !FW_PCT!%% ^(!FIRST_WAIT!秒^)
+<nul set /p "=█"
+goto :first_start_wait
+
+:first_start_ok
+echo ]
+echo [OK] Docker Desktop 已就绪！
+title PocketClaw 启动器
+goto :docker_running
 
 :: ── Docker 已安装，检查是否正在运行 ──
 :docker_exists
