@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:">
 <title>PocketClaw 配置</title>
 <style>
 :root {
@@ -113,12 +114,23 @@ function updateProviderInfo() {
   const sel = document.getElementById('provider').value;
   const info = PROVIDERS[sel];
   const div = document.getElementById('provider-info');
-  div.innerHTML = info.desc + '<br><a href="' + info.url + '" target="_blank">获取 API Key →</a>';
+  const link = document.createElement('a');
+  link.href = info.url;
+  link.target = '_blank';
+  link.textContent = '获取 API Key →';
+  div.textContent = '';
+  div.appendChild(document.createTextNode(info.desc));
+  div.appendChild(document.createElement('br'));
+  div.appendChild(link);
   document.getElementById('apikey').disabled = info.noKey;
   if (info.noKey) document.getElementById('apikey').value = 'not-needed';
 }
 
-function saveConfig() {
+function escapeHtml(text) {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function saveConfig() {
   const provider = document.getElementById('provider').value;
   const apikey = document.getElementById('apikey').value.trim();
   const info = PROVIDERS[provider];
@@ -136,7 +148,9 @@ function saveConfig() {
   const token = new URLSearchParams(location.hash.replace('#','')).get('token') || '';
   
   // 直接用 WebSocket RPC 写入文件
-  result.innerHTML = '<div class="msg ok">✅ 配置已准备！<br>请在终端中运行以下命令写入配置：<br><code style="display:block;margin-top:8px;padding:8px;background:#1e1e1e;color:#d4d4d4;border-radius:4px;font-size:12px;">echo "PROVIDER_NAME=' + provider + '\\nAPI_KEY=' + apikey + '" > config/workspace/.provider && docker restart pocketclaw</code></div>';
+  const safeProvider = escapeHtml(provider);
+  const safeKey = escapeHtml(apikey);
+  result.innerHTML = '<div class="msg ok">✅ 配置已准备！<br>请在终端中运行以下命令写入配置：<br><code style="display:block;margin-top:8px;padding:8px;background:#1e1e1e;color:#d4d4d4;border-radius:4px;font-size:12px;">echo "PROVIDER_NAME=' + safeProvider + '\nAPI_KEY=' + safeKey + '" &gt; config/workspace/.provider &amp;&amp; docker restart pocketclaw</code></div>';
 }
 </script>
 </body>

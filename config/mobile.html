@@ -1061,9 +1061,10 @@ function renderMd(text) {
     .replace(/~~(.+?)~~/g, '<del>$1</del>')
     // 链接（XSS 防护: 仅允许 http/https 协议，sanitize属性）
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m, text, url) {
-      url = url.replace(/["'<>]/g, '');  // Q3: 额外XSS清理
+      url = url.replace(/["'<>`\x00-\x1f]/g, '');  // Q3: 额外XSS清理
+      try { url = new URL(url, location.origin).href; } catch(e) { return text; }
       if (/^https?:\/\//i.test(url)) {
-        return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + text + '</a>';
+        return '<a href="' + url.replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '" target="_blank" rel="noopener noreferrer">' + text + '</a>';
       }
       return text;
     });

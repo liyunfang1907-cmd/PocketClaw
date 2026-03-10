@@ -103,7 +103,7 @@ if ! command -v docker &>/dev/null; then
             echo "[信息] 正在安装 Homebrew（macOS 包管理工具）..."
             echo "       安装过程中可能需要按回车键确认，以及输入开机密码"
             echo ""
-            # 优先国内镜像（更稳定）
+            # 优先国内镜像（更稳定）— 使用 Homebrew 官方安装方式
             if /bin/bash -c "$(curl -fsSL https://gitee.com/ineo6/homebrew-install/raw/master/install.sh)" 2>&1; then
                 true
             # 备用：官方安装脚本
@@ -111,7 +111,12 @@ if ! command -v docker &>/dev/null; then
                 true
             fi
             # Apple Silicon: /opt/homebrew  |  Intel: /usr/local
-            eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv 2>/dev/null)" 2>/dev/null || true
+            # 设置 brew 环境变量（PATH 等）
+            if [ -x /opt/homebrew/bin/brew ]; then
+                eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || export PATH="/opt/homebrew/bin:$PATH"
+            elif [ -x /usr/local/bin/brew ]; then
+                eval "$(/usr/local/bin/brew shellenv)" 2>/dev/null || export PATH="/usr/local/bin:$PATH"
+            fi
         fi
 
         # ── 方案一：Homebrew 安装 Docker Desktop（最简单）──

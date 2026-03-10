@@ -189,7 +189,7 @@ if [ -f "$PROJECT_DIR/config/workspace/.provider" ]; then
 fi
 # 回退到容器环境变量
 if [ -z "$API_KEY_FOUND" ]; then
-    API_KEY_FOUND=$(docker exec pocketclaw sh -c 'echo $OPENAI_API_KEY' 2>/dev/null || true)
+    API_KEY_FOUND=$(docker exec pocketclaw sh -c 'printf "%s" "$OPENAI_API_KEY"' 2>/dev/null || true)
 fi
 if [ -n "$API_KEY_FOUND" ] && [ "$API_KEY_FOUND" != "not-configured-yet" ]; then
     # 脱敏显示（只显示前4和后4位）
@@ -339,7 +339,7 @@ else
     fi
     # 回退：从容器环境读取
     if [ -z "$AI_API_KEY" ]; then
-        AI_API_KEY=$(docker exec pocketclaw sh -c 'echo $OPENAI_API_KEY' 2>/dev/null || true)
+        AI_API_KEY=$(docker exec pocketclaw sh -c 'printf "%s" "$OPENAI_API_KEY"' 2>/dev/null || true)
     fi
     # 无 Key 时提示用户输入
     if [ -z "$AI_API_KEY" ] || [ "$AI_API_KEY" = "not-configured-yet" ]; then

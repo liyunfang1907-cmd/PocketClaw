@@ -118,8 +118,12 @@ def main():
                 st = os.stat(filepath)
                 info.external_attr = (st.st_mode & 0xFFFF) << 16
 
-                with open(filepath, "rb") as f:
-                    data = f.read()
+                try:
+                    with open(filepath, "rb") as f:
+                        data = f.read()
+                except (PermissionError, OSError) as e:
+                    print(f"  WARNING: Skipping {rel_path}: {e}")
+                    continue
 
                 zf.writestr(info, data)
                 file_count += 1
