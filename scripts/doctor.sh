@@ -10,6 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/_common.sh"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+trap 'unset AI_API_KEY 2>/dev/null' EXIT
+
 # ── 颜色与图标 ──
 PASS="✅"
 FAIL="❌"

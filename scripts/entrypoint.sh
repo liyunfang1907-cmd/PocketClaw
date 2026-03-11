@@ -38,9 +38,9 @@ load_config() {
   ACTIVE_KEY="${OPENAI_API_KEY:-}"
   MODEL_ID="${OPENCLAW_MODEL:-}"
   AUTH_PASS="${GATEWAY_AUTH_PASSWORD:-pocketclaw}"
-  # 默认占位符时自动生成随机 8 位 token
+  # 默认占位符时自动生成随机 32 位 token（~190 bit 熵，不可暴力破解）
   if [ "$AUTH_PASS" = "pocketclaw" ]; then
-    AUTH_PASS=$(< /dev/urandom tr -dc 'a-zA-Z0-9' 2>/dev/null | head -c 8)
+    AUTH_PASS=$(< /dev/urandom tr -dc 'a-zA-Z0-9' 2>/dev/null | head -c 32)
   fi
 
   # 向后兼容：旧版 ZHIPU_API_KEY / docker-compose 默认空值
@@ -56,8 +56,8 @@ load_config() {
     while IFS='=' read -r key value; do
       [[ "$key" =~ ^[[:space:]]*# ]] && continue
       [[ -z "$key" ]] && continue
-      key=$(echo "$key" | xargs | tr -d '\r')
-      value=$(echo "$value" | xargs | tr -d '\r')
+      key=$(printf '%s' "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -d '\r')
+      value=$(printf '%s' "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -d '\r')
       case "$key" in
         PROVIDER_NAME) PROVIDER="$value" ;;
         API_KEY) ACTIVE_KEY="$value" ;;

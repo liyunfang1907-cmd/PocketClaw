@@ -40,10 +40,11 @@ ITEMS=(
     "PocketClaw.command"
 )
 
-# 可选: 备份数据 (会话 / 日志)
+# 可选: 备份数据 (会话 / 日志 / 自定义 Skill)
 OPTIONAL_ITEMS=(
     "data/credentials"
     "data/sessions"
+    "data/skills"
 )
 
 echo "[1/3] 备份核心文件..."

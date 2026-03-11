@@ -345,7 +345,7 @@ if not exist "!ENC_FILE!" (
 
 :: ���� ��������������� ����
 if not defined GATEWAY_AUTH_PASSWORD (
-    for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "-join (1..8 | ForEach-Object { [char[]]'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' | Get-Random })"`) do set "GATEWAY_AUTH_PASSWORD=%%t"
+    for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "-join (1..32 | ForEach-Object { [char[]]'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' | Get-Random })"`) do set "GATEWAY_AUTH_PASSWORD=%%t"
     if not defined GATEWAY_AUTH_PASSWORD set "GATEWAY_AUTH_PASSWORD=pc%RANDOM%%RANDOM%%RANDOM%%RANDOM%"
 )
 

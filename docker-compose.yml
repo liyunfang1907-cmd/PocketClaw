@@ -26,12 +26,7 @@ services:
       - OPENCLAW_MODEL=${OPENCLAW_MODEL:-glm-4.7-flash}
       - GATEWAY_AUTH_PASSWORD=${GATEWAY_AUTH_PASSWORD:-pocketclaw}
       - PROVIDER_NAME=${PROVIDER_NAME:-zhipu}
-      # ── Chromium 无头浏览器配置 ──
-      - PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
-      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-      - PUPPETEER_SKIP_DOWNLOAD=true
-      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-      - CHROMIUM_FLAGS=--no-sandbox --disable-gpu --disable-dev-shm-usage
+
       # ── 频道配置（按需填写，留空则不启用） ──
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}

@@ -181,6 +181,14 @@ if [ -z "$NEW_KEY" ]; then
     echo "  [错误] API Key 不能为空。"
     exit 1
 fi
+if [ ${#NEW_KEY} -lt 10 ]; then
+    echo "  [错误] API Key 长度不足（最少 10 位）。"
+    exit 1
+fi
+if [[ "$NEW_KEY" =~ [[:space:]] ]]; then
+    echo "  [错误] API Key 不能包含空格或换行符。"
+    exit 1
+fi
 
 echo ""
 echo "[信息] 正在保存配置..."

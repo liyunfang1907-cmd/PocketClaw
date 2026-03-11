@@ -153,10 +153,16 @@ fi
 echo ""
 
 API_KEY=""
-while [ -z "$API_KEY" ]; do
+while true; do
     read -rp "  请粘贴你的 ${PROV_NAME} API Key: " API_KEY
     if [ -z "$API_KEY" ]; then
         red "  API Key 不能为空，请重新输入。"
+    elif [ ${#API_KEY} -lt 10 ]; then
+        red "  API Key 长度不足（最少 10 位），请检查后重新输入。"
+    elif [[ "$API_KEY" =~ [[:space:]] ]]; then
+        red "  API Key 不能包含空格或换行符，请重新输入。"
+    else
+        break
     fi
 done
 
@@ -184,7 +190,7 @@ OPENCLAW_MODEL=${DEFAULT_MODEL}
 # ── AI API Key ──
 OPENAI_API_KEY=${API_KEY}
 
-# ── Gateway 认证密码 ──
+# ── Gateway 认证密码（启动时自动生成随机 token 覆盖）──
 GATEWAY_AUTH_PASSWORD=pocketclaw
 ENVEOF
 

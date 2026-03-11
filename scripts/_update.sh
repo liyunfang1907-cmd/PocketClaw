@@ -19,12 +19,18 @@ check_and_update() {
         VERSION_JSON=$(curl -sf --connect-timeout 5 "$VERSION_API" 2>/dev/null || \
                        curl -sf --connect-timeout 5 "$VERSION_API_BACKUP" 2>/dev/null || true)
         if [ -n "$VERSION_JSON" ]; then
-            # 兼容 "latest" 和 "version" 两种字段名
-            LATEST_VER=$(echo "$VERSION_JSON" | grep -o '"latest"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
-            [ -z "$LATEST_VER" ] && LATEST_VER=$(echo "$VERSION_JSON" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
-            DOWNLOAD_URL=$(echo "$VERSION_JSON" | grep -o '"download_url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
-            [ -z "$DOWNLOAD_URL" ] && DOWNLOAD_URL=$(echo "$VERSION_JSON" | grep -o '"cos_url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
-            DOWNLOAD_URL_BACKUP=$(echo "$VERSION_JSON" | grep -o '"download_url_backup"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            # 优先用 python3 解析 JSON（健壮），回退到 grep+sed
+            if command -v python3 &>/dev/null; then
+                LATEST_VER=$(echo "$VERSION_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('latest', d.get('version', '')))" 2>/dev/null || true)
+                DOWNLOAD_URL=$(echo "$VERSION_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('download_url', d.get('cos_url', '')))" 2>/dev/null || true)
+                DOWNLOAD_URL_BACKUP=$(echo "$VERSION_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('download_url_backup', ''))" 2>/dev/null || true)
+            else
+                LATEST_VER=$(echo "$VERSION_JSON" | grep -o '"latest"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+                [ -z "$LATEST_VER" ] && LATEST_VER=$(echo "$VERSION_JSON" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+                DOWNLOAD_URL=$(echo "$VERSION_JSON" | grep -o '"download_url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+                [ -z "$DOWNLOAD_URL" ] && DOWNLOAD_URL=$(echo "$VERSION_JSON" | grep -o '"cos_url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+                DOWNLOAD_URL_BACKUP=$(echo "$VERSION_JSON" | grep -o '"download_url_backup"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            fi
         fi
     fi
 

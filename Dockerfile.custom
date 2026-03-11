@@ -86,7 +86,9 @@ RUN mkdir -p /home/node/.openclaw/workspace \
              /home/node/.openclaw/cron \
              /home/node/.openclaw/skills \
              /home/node/.openclaw/identity \
-    && chown -R node:node /home/node/.openclaw
+    && chown -R node:node /home/node/.openclaw \
+    && chmod 700 /home/node/.openclaw/credentials \
+                 /home/node/.openclaw/sessions
 
 # 将配置文件 COPY 到镜像内（作为默认值，entrypoint 会动态覆盖）
 COPY --chown=node:node config/openclaw.json /home/node/.openclaw/openclaw.json

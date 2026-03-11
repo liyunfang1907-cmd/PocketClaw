@@ -389,23 +389,7 @@ echo "[4/7] 镜像加速器 ✓"
 echo ""
 
 # ── 清理 macOS 资源分叉/隐藏文件（防止 Docker 构建失败 + 保持 USB 干净）──
-find "$PROJECT_DIR" -maxdepth 2 \( -name '._*' -o -name '.DS_Store' \) -delete 2>/dev/null || true
-
-# 清理 USB 根目录的 macOS 隐藏文件（Spotlight 索引、FSEvents、回收站等）
-if [[ "$(uname)" == "Darwin" ]]; then
-    USB_ROOT="$(cd "$PROJECT_DIR/.." && pwd)"
-    # 仅当父目录看起来像 USB 挂载点时才清理
-    if [[ "$USB_ROOT" == /Volumes/* ]] || [[ "$USB_ROOT" == /media/* ]] || [[ "$USB_ROOT" == /mnt/* ]]; then
-        rm -rf "$USB_ROOT/.Spotlight-V100" "$USB_ROOT/.Trashes" "$USB_ROOT/.fseventsd" 2>/dev/null || true
-        rm -f "$USB_ROOT/.DS_Store" 2>/dev/null || true
-        # 创建 .metadata_never_index 阻止 Spotlight 索引此驱动器
-        touch "$USB_ROOT/.metadata_never_index" 2>/dev/null || true
-        # 创建 .fseventsd/no_log 阻止 FSEvents 记录
-        mkdir -p "$USB_ROOT/.fseventsd" 2>/dev/null || true
-        touch "$USB_ROOT/.fseventsd/no_log" 2>/dev/null || true
-        echo "[清理] 已清除 USB 驱动器 macOS 隐藏文件并禁止重新生成"
-    fi
-fi
+clean_macos_usb_artifacts "$PROJECT_DIR" && echo "[清理] 已清除 macOS 隐藏文件并禁止重新生成" || true
 
 # ── 启动 ──
 cd "$PROJECT_DIR"
@@ -511,6 +495,11 @@ fi
 echo ""
 echo "[5/7] 镜像构建 ✓"
 
+# ── Skill 安全扫描（启动前检查用户 Skill 文件）──
+if [ -f "$PROJECT_DIR/scripts/skill-check.sh" ]; then
+    bash "$PROJECT_DIR/scripts/skill-check.sh" "$PROJECT_DIR/data/skills"
+fi
+
 # ── 第二步：启动容器 ──
 # 彻底清理所有 pocketclaw 相关容器（包括幽灵容器）和网络
 echo "[..] 清理旧容器..."
@@ -527,9 +516,9 @@ done
 docker network rm pocketclaw_pocketclaw-net >> "$BUILD_LOG" 2>&1 || true
 docker network rm pocketclaw_default >> "$BUILD_LOG" 2>&1 || true
 
-# ── 生成随机 Gateway Token（每次启动不同，防止局域网未授权访问）──
+# ── 生成随机 Gateway Token（32 位，每次启动不同，防止局域网未授权访问）──
 if [ -z "${GATEWAY_AUTH_PASSWORD:-}" ]; then
-    GATEWAY_AUTH_PASSWORD=$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 8 || true)
+    GATEWAY_AUTH_PASSWORD=$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 32 || true)
     # 若 urandom 失败，使用时间戳+进程号
     if [ -z "$GATEWAY_AUTH_PASSWORD" ]; then
         GATEWAY_AUTH_PASSWORD="pc$(date +%s)$$$(( RANDOM % 9999 ))"
