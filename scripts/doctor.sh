@@ -159,7 +159,6 @@ if [ -f "$PROVIDER_FILE" ]; then
     # 检查必要字段
     HAS_PROVIDER=$(grep -c '^PROVIDER_NAME=' "$PROVIDER_FILE" 2>/dev/null || echo 0)
     HAS_KEY=$(grep -c '^API_KEY=' "$PROVIDER_FILE" 2>/dev/null || echo 0)
-    HAS_MODEL=$(grep -c '^MODEL_ID=' "$PROVIDER_FILE" 2>/dev/null || echo 0)
     PROV_NAME=$(grep '^PROVIDER_NAME=' "$PROVIDER_FILE" 2>/dev/null | cut -d= -f2 | tr -d ' \r')
     if [ "$HAS_PROVIDER" -gt 0 ] && [ "$HAS_KEY" -gt 0 ]; then
         add_result pass ".provider 配置" "提供商: ${PROV_NAME:-unknown}, 字段完整"
@@ -238,10 +237,6 @@ if [ "${SKIP_REST:-0}" != "1" ]; then
 echo -n "  [9/11] 磁盘空间..."
 # 检查项目目录所在磁盘
 DISK_AVAIL=$(df -m "$PROJECT_DIR" 2>/dev/null | awk 'NR==2{print $4}')
-DOCKER_DISK=""
-if docker system df --format '{{.Size}}' &>/dev/null 2>&1; then
-    DOCKER_DISK=$(docker system df 2>/dev/null | head -5)
-fi
 if [ -n "$DISK_AVAIL" ]; then
     if [ "$DISK_AVAIL" -lt 500 ]; then
         add_result fail "磁盘空间" "项目磁盘仅剩 ${DISK_AVAIL}MB，低于 500MB 阈值"
@@ -547,7 +542,7 @@ if [ "$FAILED" -gt 0 ]; then
                (docker ps --filter "name=pocketclaw" --format "{{.ID}}" 2>/dev/null | head -1 | grep -q . && \
                 ! curl -sf --connect-timeout 2 http://127.0.0.1:18789/health &>/dev/null); then
                 echo "  [修复] 正在重启容器..."
-                cd "$PROJECT_DIR"
+                cd "$PROJECT_DIR" || true
                 run_compose restart 2>/dev/null || docker restart pocketclaw 2>/dev/null || true
                 sleep 5
                 if curl -sf --connect-timeout 5 http://127.0.0.1:18789/health &>/dev/null; then

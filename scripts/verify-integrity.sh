@@ -51,7 +51,7 @@ FILES=(
 if [[ "${1:-}" == "--init" ]]; then
     echo ""
     echo "正在生成文件校验和..."
-    > "$CHECKSUM_FILE"
+    true > "$CHECKSUM_FILE"
     for f in "${FILES[@]}"; do
         if [[ -f "$PROJECT_DIR/$f" ]]; then
             HASH=$(shasum -a 256 "$PROJECT_DIR/$f" | awk '{print $1}')

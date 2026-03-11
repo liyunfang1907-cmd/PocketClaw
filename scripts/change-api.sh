@@ -231,7 +231,7 @@ if [[ "$RESTART" =~ ^[Yy]$ ]]; then
     echo "  当前提供商: $PROV_NAME"
     echo "  当前模型:   $DEFAULT_MODEL"
     # 读取实际 Gateway Token
-    local _token=""
+    _token=""
     if [ -f "$PROJECT_DIR/config/workspace/.gateway_token" ]; then
         _token=$(cat "$PROJECT_DIR/config/workspace/.gateway_token" 2>/dev/null | tr -d '\n\r')
     fi

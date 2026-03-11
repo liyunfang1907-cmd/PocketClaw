@@ -411,7 +411,7 @@ fi
 cd "$PROJECT_DIR"
 mkdir -p "$PROJECT_DIR/data/logs"
 BUILD_LOG="$PROJECT_DIR/data/logs/build.log"
-> "$BUILD_LOG"
+true > "$BUILD_LOG"
 
 # ── 第一步：智能构建镜像 ──
 # 计算关键文件指纹：仅当 Dockerfile/entrypoint/config/providers 变化时才重新构建
@@ -438,11 +438,9 @@ fi
 if [ "$NEED_BUILD" -eq 1 ]; then
     # 尝试从 Docker Hub 拉取预构建镜像（D1: 省去本地构建时间）
     DOCKER_IMAGE="pocketclaw/pocketclaw:latest"
-    PULL_OK=0
     echo "[5/7] 尝试拉取预构建镜像..."
     if docker pull "$DOCKER_IMAGE" >> "$BUILD_LOG" 2>&1; then
         docker tag "$DOCKER_IMAGE" pocketclaw-pocketclaw:latest >> "$BUILD_LOG" 2>&1
-        PULL_OK=1
         NEED_BUILD=0
         echo "[OK] 预构建镜像拉取成功，跳过本地构建"
         [ -n "$CURRENT_HASH" ] && echo "$CURRENT_HASH" > "$BUILD_HASH_FILE"
@@ -652,7 +650,6 @@ elif docker exec pocketclaw python3 -c "print('API_KEY_MISSING')" 2>/dev/null | 
     echo "       或在控制面板中选择 [4] 切换模型/API Key"
     echo ""
 else
-    API_CHECK_OK=1
     echo "[OK] API Key 验证跳过（容器初始化中）"
 fi
 

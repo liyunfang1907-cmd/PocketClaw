@@ -20,7 +20,7 @@ elif [ -f "$PAYLOAD_DIR/scripts/_common.sh" ]; then
 else
     # 定义最小依赖函数，确保脚本仍可运行
     run_compose() { docker compose "$@" 2>/dev/null || docker-compose "$@"; }
-    secure_wipe() { dd if=/dev/urandom of="$1" bs=$(stat -f%z "$1" 2>/dev/null || stat -c%s "$1") count=1 conv=notrunc 2>/dev/null; rm -f "$1"; }
+    secure_wipe() { dd if=/dev/urandom of="$1" bs="$(stat -f%z "$1" 2>/dev/null || stat -c%s "$1")" count=1 conv=notrunc 2>/dev/null; rm -f "$1"; }
 fi
 
 # ── 颜色 ──
@@ -145,7 +145,7 @@ echo ""
 yellow "[3/4] 正在安装更新..."
 
 # 安装更新：只更新项目文件，保留用户数据
-EXCLUDE_DIRS="secrets data .env openclaw-src config/workspace .DS_Store"
+# 排除目录: secrets data .env openclaw-src config/workspace .DS_Store
 
 if command -v rsync &>/dev/null; then
     rsync -a \
