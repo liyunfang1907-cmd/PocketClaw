@@ -625,7 +625,6 @@ echo ""
 
 # ── API Key 有效性验证（N7: 启动后自动检查，无效立即提示）──
 echo "[信息] 正在验证 API Key..."
-API_CHECK_OK=0
 # 从容器环境变量获取 API 配置并尝试调 models 接口
 if docker exec pocketclaw python3 -c "
 import os, urllib.request, urllib.error, json, sys
@@ -641,7 +640,6 @@ if not api_key or api_key == 'not-configured-yet':
     sys.exit(0)
 print('API_KEY_OK')
 " 2>/dev/null | grep -q 'API_KEY_OK'; then
-    API_CHECK_OK=1
     echo "[OK] API Key 已配置"
 elif docker exec pocketclaw python3 -c "print('API_KEY_MISSING')" 2>/dev/null | grep -q 'API_KEY_MISSING'; then
     echo ""
